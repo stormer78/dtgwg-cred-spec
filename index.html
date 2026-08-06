@@ -108,7 +108,7 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
       ],
       "source": "xref",
       "termId": "term:credential",
-      "lastUpdated": "2026-07-30T20:52:45.701Z"
+      "lastUpdated": "2026-08-06T10:17:03.565Z"
     }
   ]
 };</script>
@@ -358,8 +358,8 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <li><a href="#annotation-credentials">Annotation Credentials</a>
 <ul>
 <li><a href="#vpc-verifiable-persona-credential">VPC (Verifiable Persona Credential)</a></li>
-<li><a href="#vec-verifiable-endorsement-credential">VEC (Verifiable Endorsement Credential)</a></li>
 <li><a href="#vwc-verifiable-witness-credential">VWC (Verifiable Witness Credential)</a></li>
+<li><a href="#vec-verifiable-endorsement-credential">VEC (Verifiable Endorsement Credential)</a></li>
 </ul>
 </li>
 <li><a href="#trust-task-context-binding">Trust Task Context Binding</a>
@@ -414,7 +414,7 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
                     <div id="terminology-section-utility-container" class="d-print-none alert alert-primary p-3"></div>
                     <h1 id="decentralized-trust-graph-credentials-core-specification"><a class="toc-anchor d-print-none" href="#decentralized-trust-graph-credentials-core-specification">§</a> Decentralized Trust Graph Credentials - Core Specification</h1>
 <p><em>Version:</em> 1.0<br>
-<em>Document Status:</em> Working Draft</p>
+<em>Document Status:</em> Working Draft 01</p>
 <!-- _DOI:_ To be assigned when this specification reaches ToIP Approved Deliverable status. See https://lf-toip.atlassian.net/wiki/spaces/HOME/pages/767787009/ToIP+Approved+Deliverable+Process#Persistent-DOI-Link -->
 <p><em>Editors:</em></p>
 <ul>
@@ -653,19 +653,19 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <p><em>This section is informative.</em></p>
 <p>This section provides a visual overview of the DTG Core Credential types and their formal type hierarchy. The three functional categories (edge, invitation, annotation) are descriptive aids only; they do not appear in credential schemas.</p>
 <div class="mermaid">
-graph TB
+graph LR
     DTG[DTGCredential]
 
     DTG --&gt; EC(Edge Credentials)
     DTG --&gt; IC(Invitation Credentials)
     DTG --&gt; AC(Annotation Credentials)
 
-    EC --&gt; VMC["VMC<br>MembershipCredential"]
-    EC --&gt; VRC["VRC<br>RelationshipCredential"]
-    IC --&gt; VIC["VIC<br>InvitationCredential"]
-    AC --&gt; VPC["VPC<br>PersonaCredential"]
-    AC --&gt; VEC["VEC<br>EndorsementCredential"]
-    AC --&gt; VWC["VWC<br>WitnessCredential"]
+    EC --&gt; VRC["VRC - RelationshipCredential"]
+    EC --&gt; VMC["VMC - MembershipCredential"]
+    IC --&gt; VIC["VIC - InvitationCredential"]
+    AC --&gt; VPC["VPC - PersonaCredential"]
+    AC --&gt; VWC["VWC - WitnessCredential"]
+    AC --&gt; VEC["VEC - EndorsementCredential"]
 
     classDef parent fill:#f5f5f5,stroke:#555,stroke-width:2px,color:#000
     classDef cat fill:#eeeeee,stroke:#999,stroke-width:1px,color:#555
@@ -994,44 +994,6 @@ graph TB
   <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"//"</span><span class="token operator">:</span> <span class="token string">"..."</span> <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<h3 id="vec-verifiable-endorsement-credential"><a class="toc-anchor d-print-none" href="#vec-verifiable-endorsement-credential">§</a> VEC (Verifiable Endorsement Credential)</h3>
-<p><strong>Purpose:</strong> Attaches endorsements (skills, reputation) to a party. The verifiability applies to cryptographic assurance in the issuer’s signature, not to the truth of the assertions, whose vocabulary is defined by the governing <a class="term-reference" href="#term:vtc">VTC</a> or <a class="term-reference" href="#term:vtn">VTN</a>.</p>
-<p><strong>Schema:</strong></p>
-<ul>
-<li><code>type</code> (array, REQUIRED): MUST include <code>"EndorsementCredential"</code></li>
-<li><code>issuer</code> (string, REQUIRED): DID of the endorser</li>
-<li><code>credentialSubject</code> (object, REQUIRED):
-<ul>
-<li><code>id</code> (string, REQUIRED): DID of the endorsed party</li>
-<li><code>endorsement</code> (object, REQUIRED): Community/VTN-defined endorsement structure
-<ul>
-<li>Structure and fields determined by community policy</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
-  <span class="token property">"@context"</span><span class="token operator">:</span> <span class="token punctuation">[</span>
-    <span class="token string">"https://www.w3.org/ns/credentials/v2"</span><span class="token punctuation">,</span>
-    <span class="token string">"https://firstperson.network/credentials/dtg/v1"</span><span class="token punctuation">,</span>
-    <span class="token string">"https://w3id.org/security/suites/ed25519-2020/v1"</span>
-  <span class="token punctuation">]</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"VerifiableCredential"</span><span class="token punctuation">,</span> <span class="token string">"DTGCredential"</span><span class="token punctuation">,</span> <span class="token string">"EndorsementCredential"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:key:z6MkhaXgBZD..."</span><span class="token punctuation">,</span>
-  <span class="token property">"validFrom"</span><span class="token operator">:</span> <span class="token string">"2026-01-06T10:00:00Z"</span><span class="token punctuation">,</span>
-  <span class="token property">"credentialSubject"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"did:key:z6MkpTHR8VNs..."</span><span class="token punctuation">,</span>
-    <span class="token property">"endorsement"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-      <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"SkillEndorsement"</span><span class="token punctuation">,</span>
-      <span class="token property">"name"</span><span class="token operator">:</span> <span class="token string">"Software Development"</span><span class="token punctuation">,</span>
-      <span class="token property">"competencyLevel"</span><span class="token operator">:</span> <span class="token string">"expert"</span>
-    <span class="token punctuation">}</span>
-  <span class="token punctuation">}</span><span class="token punctuation">,</span>
-  <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"//"</span><span class="token operator">:</span> <span class="token string">"..."</span> <span class="token punctuation">}</span>
-<span class="token punctuation">}</span>
-</code></pre>
 <h3 id="vwc-verifiable-witness-credential"><a class="toc-anchor d-print-none" href="#vwc-verifiable-witness-credential">§</a> VWC (Verifiable Witness Credential)</h3>
 <p><strong>Purpose:</strong> Third-party attestation that an edge was established under specific conditions. The witness may be a person or a <a class="term-reference" href="#term:vta">VTA</a> applying the witnessing policies of a <a class="term-reference" href="#term:vtc">VTC</a> — for example, verifying that both parties were present at the same event, or provided proof of biometric liveness at the time of relationship formation.</p>
 <p>Because the meaning of a witness attestation depends on the conditions under which the witnessing occurred, a VWC MUST be bound to the <a href="https://glossary.trustoverip.org/#term:trust-tasks">trust task</a> exchange in which it was issued via the <code>taskContext</code> property (see <a href="#trust-task-context-binding">Trust Task Context Binding</a>).</p>
@@ -1073,6 +1035,44 @@ graph TB
       <span class="token property">"event"</span><span class="token operator">:</span> <span class="token string">"EthDenver 2024"</span><span class="token punctuation">,</span>
       <span class="token property">"sessionId"</span><span class="token operator">:</span> <span class="token string">"session-abc-123"</span><span class="token punctuation">,</span>
       <span class="token property">"method"</span><span class="token operator">:</span> <span class="token string">"in-person-proximity"</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span>
+  <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"//"</span><span class="token operator">:</span> <span class="token string">"..."</span> <span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<h3 id="vec-verifiable-endorsement-credential"><a class="toc-anchor d-print-none" href="#vec-verifiable-endorsement-credential">§</a> VEC (Verifiable Endorsement Credential)</h3>
+<p><strong>Purpose:</strong> Attaches endorsements (skills, reputation) to a party. The verifiability applies to cryptographic assurance in the issuer’s signature, not to the truth of the assertions, whose vocabulary is defined by the governing <a class="term-reference" href="#term:vtc">VTC</a> or <a class="term-reference" href="#term:vtn">VTN</a>.</p>
+<p><strong>Schema:</strong></p>
+<ul>
+<li><code>type</code> (array, REQUIRED): MUST include <code>"EndorsementCredential"</code></li>
+<li><code>issuer</code> (string, REQUIRED): DID of the endorser</li>
+<li><code>credentialSubject</code> (object, REQUIRED):
+<ul>
+<li><code>id</code> (string, REQUIRED): DID of the endorsed party</li>
+<li><code>endorsement</code> (object, REQUIRED): Community/VTN-defined endorsement structure
+<ul>
+<li>Structure and fields determined by community policy</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
+  <span class="token property">"@context"</span><span class="token operator">:</span> <span class="token punctuation">[</span>
+    <span class="token string">"https://www.w3.org/ns/credentials/v2"</span><span class="token punctuation">,</span>
+    <span class="token string">"https://firstperson.network/credentials/dtg/v1"</span><span class="token punctuation">,</span>
+    <span class="token string">"https://w3id.org/security/suites/ed25519-2020/v1"</span>
+  <span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"VerifiableCredential"</span><span class="token punctuation">,</span> <span class="token string">"DTGCredential"</span><span class="token punctuation">,</span> <span class="token string">"EndorsementCredential"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:key:z6MkhaXgBZD..."</span><span class="token punctuation">,</span>
+  <span class="token property">"validFrom"</span><span class="token operator">:</span> <span class="token string">"2026-01-06T10:00:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"credentialSubject"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+    <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"did:key:z6MkpTHR8VNs..."</span><span class="token punctuation">,</span>
+    <span class="token property">"endorsement"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+      <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"SkillEndorsement"</span><span class="token punctuation">,</span>
+      <span class="token property">"name"</span><span class="token operator">:</span> <span class="token string">"Software Development"</span><span class="token punctuation">,</span>
+      <span class="token property">"competencyLevel"</span><span class="token operator">:</span> <span class="token string">"expert"</span>
     <span class="token punctuation">}</span>
   <span class="token punctuation">}</span><span class="token punctuation">,</span>
   <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"//"</span><span class="token operator">:</span> <span class="token string">"..."</span> <span class="token punctuation">}</span>
@@ -1323,15 +1323,15 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 </div>
             </div>
             <hr id="external-ref-changes-divider" style="display: none;">
-            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 30 July 2026</p>
+            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 06 August 2026</p>
             <!-- Build Information Section -->
             <div class="ps-3 pe-3">
                 <p class="mb-2 fw-bold">Build Information:</p>
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2"></i>
-                        <time class="timestamp" datetime="2026-07-30T20:52:45.046Z">
-                            Generated: 2026-07-30T20:52:45.046Z
+                        <time class="timestamp" datetime="2026-08-06T10:17:03.088Z">
+                            Generated: 2026-08-06T10:17:03.088Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
