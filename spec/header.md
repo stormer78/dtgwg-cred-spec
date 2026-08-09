@@ -9,7 +9,7 @@ _Editors:_
 - Alberto Leon, Applied Technology Lab at Harvard University
 - Brendan A. Miller, Applied Technology Lab at Harvard University
 - Geoff Turk, First Person Project
-- Martina Kolpondinos, First Person Project
+- Martina Kolpondinos, First Person Project, Kosma Connect
 - Drummond Reed, First Person Project
 
 _Contributors:_
@@ -20,7 +20,7 @@ _Contributors:_
 
 **Abstract**
 
-A Decentralized Trust Graph (DTG) is a graph of cryptographically verifiable trust relationships between people, organizations, devices, and AI agents. This specification defines the DTG Core Credentials: six W3C Verifiable Credential types that create and annotate the nodes and edges of a DTG. Two edge credentials establish graph structure — membership in a verifiable trust community (VMC) and peer-to-peer relationships (VRC). One invitation credential (VIC) supports onboarding of new members. Three annotation credentials attach information to existing graph structure: personas for intentional correlation (VPC), endorsements for community-governed reputation assertions (VEC), and witness attestations of relationship formation (VWC). These credentials enable privacy-preserving zero-knowledge proofs of personhood, community membership, and relationships while minimizing correlation across contexts. The specification also defines how a credential may be bound to the context of the Trust Task exchange in which it was issued, so that verifiers can distinguish durable graph claims from task-dependent claims.
+A Decentralized Trust Graph (DTG) is a graph of cryptographically verifiable [trust relationships](https://glossary.trustoverip.org/#term:trust-relationships) between entities (people, communities, devices, and AI agents). This specification defines six **DTG Core Credential** types, expressed as W3C verifiable credentials. The six credential types fall into three functional categories: **Edge Credentials** comprise the **Verifiable Membership Credential (VMC)** and the **Verifiable Relationship Credential (VRC)**, which establish graph edges representing community membership and peer-to-peer relationships; the **Verifiable Invitation Credential (VIC)** supports member onboarding; and the **Annotation Credentials** comprise the **Verifiable Persona Credential (VPC)**, **Verifiable Endorsement Credential (VEC)** and **Verifiable Witness Credential (VWC)**, which associated [[ref: personas]] for intentional correlation, verifiable assertions about counterparties, including endorsements, and witness attestations of relationship formation, with existing relationships. The DTG credentials can be presented in privacy-preserving ways using zero-knowledge proof mechanisms. Such presentations can support holders to limit information they disclose and reduce correlation across contexts. The specification also defines a mechanism for associating credentials with the [trust task](https://glossary.trustoverip.org/#term:trust-task) context in which they were issued,  allowing its meaning to be interpreted in the context of that exchange.
 
 **Intellectual Property Rights**
 
