@@ -108,7 +108,7 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
       ],
       "source": "xref",
       "termId": "term:credential",
-      "lastUpdated": "2026-08-06T10:17:03.565Z"
+      "lastUpdated": "2026-08-12T12:56:11.046Z"
     }
   ]
 };</script>
@@ -997,7 +997,8 @@ graph LR
 <h3 id="vwc-verifiable-witness-credential"><a class="toc-anchor d-print-none" href="#vwc-verifiable-witness-credential">§</a> VWC (Verifiable Witness Credential)</h3>
 <p><strong>Purpose:</strong> Third-party attestation that an edge was established under specific conditions. The witness may be a person or a <a class="term-reference" href="#term:vta">VTA</a> applying the witnessing policies of a <a class="term-reference" href="#term:vtc">VTC</a> — for example, verifying that both parties were present at the same event, or provided proof of biometric liveness at the time of relationship formation.</p>
 <p>Because the meaning of a witness attestation depends on the conditions under which the witnessing occurred, a VWC MUST be bound to the <a href="https://glossary.trustoverip.org/#term:trust-tasks">trust task</a> exchange in which it was issued via the <code>taskContext</code> property (see <a href="#trust-task-context-binding">Trust Task Context Binding</a>).</p>
-<p>A witnessed exchange of a complete <a class="term-reference" href="#term:dtg-edge">DTG edge</a> is bidirectional: two VRCs, one in each direction, are formed in a single witnessing event. For such exchanges the witness SHOULD issue one VWC per direction. In each VWC, <code>credentialSubject.id</code> MUST be the DID of the issuer of the VRC that the VWC attests (the VRC referenced by <code>digest</code>, when present), so that the two VWCs of an exchange are unambiguously bound to their respective directions.</p>
+<p>A witnessed exchange of a complete <a class="term-reference" href="#term:dtg-edge">DTG edge</a> is bidirectional: two VRCs, one in each direction, are formed in a single witnessing event. For such exchanges the witness SHOULD issue one VWC per direction. In each VWC, <code>credentialSubject.id</code> MUST be the DID of the issuer of the VRC that the VWC attests (the VRC referenced by <code>digest</code>), so that the two VWCs of an exchange are unambiguously bound to their respective directions.</p>
+<p>A VWC’s <code>credentialSubject.id</code> and <code>taskContext</code> alone identify only the observed party and the trust task exchange, not the edge being witnessed. Binding a VWC to a specific edge therefore requires <code>digest</code>: a verifier holding the referenced VRC can recover both relationship endpoints (the VRC’s <code>issuer</code> and <code>credentialSubject.id</code>) and confirm the exact credential the witness attested to. This binding is only as strong as the verifier’s access to that VRC — a <code>digest</code> without the referenced VRC to hand is an opaque hash, not an identified edge. Issuers and holders presenting a VWC as evidence of a specific edge SHOULD make the referenced VRC available alongside it.</p>
 <p><strong>Schema:</strong></p>
 <ul>
 <li><code>type</code> (array, REQUIRED): MUST include <code>"WitnessCredential"</code></li>
@@ -1006,7 +1007,7 @@ graph LR
 <li><code>credentialSubject</code> (object, REQUIRED):
 <ul>
 <li><code>id</code> (string, REQUIRED): DID of the observed party</li>
-<li><code>digest</code> (string, OPTIONAL): A cryptographic hash of the witnessed VRC. The hash MUST be computed as the SHA-256 hash of the credential’s JSON representation canonicalized with the JSON Canonicalization Scheme (<a href="https://datatracker.ietf.org/doc/html/rfc8785">JCS, RFC 8785</a>), and MUST be encoded as the string <code>sha256:</code> followed by the lowercase hexadecimal digest.</li>
+<li><code>digest</code> (string, REQUIRED): A cryptographic hash of the witnessed VRC, binding the VWC to the specific edge established. The hash MUST be computed as the SHA-256 hash of the credential’s JSON representation canonicalized with the JSON Canonicalization Scheme (<a href="https://datatracker.ietf.org/doc/html/rfc8785">JCS, RFC 8785</a>), and MUST be encoded as the string <code>sha256:</code> followed by the lowercase hexadecimal digest.</li>
 <li><code>witnessContext</code> (object, OPTIONAL): Context of the witnessing event
 <ul>
 <li><code>event</code> (string, OPTIONAL): Human-readable event name</li>
@@ -1155,7 +1156,7 @@ graph LR
 <li><strong>Proof verification.</strong> Verifiers must cryptographically verify the <code>proof</code> of every DTG credential, including resolution of the issuer’s DID and validation of the verification method, before relying on any claim in the credential.</li>
 <li><strong>Validity period enforcement.</strong> Verifiers must reject credentials outside their <code>validFrom</code>/<code>validUntil</code> window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.</li>
 <li><strong>Issuer authorization.</strong> A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a VMC issuer being a recognized VTC, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.</li>
-<li><strong>Digest integrity (VWC).</strong> When a VWC includes a <code>digest</code> of the witnessed VRC, verifiers relying on the attestation should recompute the SHA-256 hash over the JCS (RFC 8785) canonical form of the VRC and confirm the match; a mismatch invalidates the attestation.</li>
+<li><strong>Digest integrity (VWC).</strong> A verifier relying on a VWC’s binding to a specific edge must have the referenced VRC available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form, and confirm it matches <code>digest</code>; a mismatch invalidates the attestation. Without the referenced VRC in hand, <code>digest</code> cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed.</li>
 <li><strong>Context collapse.</strong> A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of <a href="#trust-task-context-binding">Trust Task Context Binding</a> exist to prevent this class of attack and must be enforced by verifiers.</li>
 <li><strong>Replay of invitation credentials.</strong> VICs should be issued with short validity periods and should be treated as single-use by the accepting <a class="term-reference" href="#term:vta">VTA</a>/<a class="term-reference" href="#term:pep">PEP</a>, to prevent replay of an intercepted invitation.</li>
 <li><strong>Key compromise.</strong> Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.</li>
@@ -1323,15 +1324,15 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 </div>
             </div>
             <hr id="external-ref-changes-divider" style="display: none;">
-            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 06 August 2026</p>
+            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 12 August 2026</p>
             <!-- Build Information Section -->
             <div class="ps-3 pe-3">
                 <p class="mb-2 fw-bold">Build Information:</p>
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2"></i>
-                        <time class="timestamp" datetime="2026-08-06T10:17:03.088Z">
-                            Generated: 2026-08-06T10:17:03.088Z
+                        <time class="timestamp" datetime="2026-08-12T12:56:09.947Z">
+                            Generated: 2026-08-12T12:56:09.947Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
