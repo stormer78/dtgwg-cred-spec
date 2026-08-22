@@ -95,7 +95,7 @@ All DTG-specific schemas (types, issuer requirements, credentialSubject structur
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "MembershipCredential"],
-  "issuer": "did:web:chess-club.example",
+  "issuer": "did:webvh:QmSbCcXWDDJmqE8m1nZ...:chess-club.example",
   "validFrom": "2026-01-06T10:00:00Z",
   "validUntil": "2027-01-06T10:00:00Z",
   "credentialSubject": {
@@ -105,7 +105,7 @@ All DTG-specific schemas (types, issuer requirements, credentialSubject structur
     "type": "Ed25519Signature2020",
     "created": "2026-01-06T10:00:00Z",
     "proofPurpose": "assertionMethod",
-    "verificationMethod": "did:web:chess-club.example#key-1",
+    "verificationMethod": "did:webvh:QmSbCcXWDDJmqE8m1nZ...:chess-club.example#key-1",
     "proofValue": "z3FXQjecWJKT..."
   }
 }
@@ -121,7 +121,7 @@ All DTG-specific schemas (types, issuer requirements, credentialSubject structur
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "MembershipCredential"],
-  "issuer": "did:web:chess-club.example",
+  "issuer": "did:webvh:QmSbCcXWDDJmqE8m1nZ...:chess-club.example",
   "issuanceDate": "2026-01-06T10:00:00Z",
   "expirationDate": "2027-01-06T10:00:00Z",
   "credentialSubject": {
@@ -131,7 +131,7 @@ All DTG-specific schemas (types, issuer requirements, credentialSubject structur
     "type": "Ed25519Signature2020",
     "created": "2026-01-06T10:00:00Z",
     "proofPurpose": "assertionMethod",
-    "verificationMethod": "did:web:chess-club.example#key-1",
+    "verificationMethod": "did:webvh:QmSbCcXWDDJmqE8m1nZ...:chess-club.example#key-1",
     "proofValue": "z3FXQjecWJKT..."
   }
 }
@@ -183,6 +183,32 @@ All DTG credentials share this W3C VC structure (v2.0 shown; see [Legacy System 
   }
 }
 ```
+
+### DID Method Considerations
+
+*This subsection is informative.*
+
+This specification does not mandate a [decentralized identifier](https://glossary.trustoverip.org/#term:decentralized-identifier) method. The four [[ref: VID]] types — [[ref: R-DIDs]], [[ref: M-DIDs]], [[ref: C-DIDs]], and [[ref: P-DIDs]] — describe the role an identifier plays in the graph, not how it resolves, and a deployment may use different methods for different roles. What follows states the properties each role depends on, so that implementers can determine whether a candidate method is suitable.
+
+**Durable identifiers ([[ref: C-DIDs]] and [[ref: M-DIDs]]).** A [[ref: C-DID]] identifies a [[ref: VTC]] that issues [[ref: VMCs]] and is expected to outlive any particular key, operator, or hosting arrangement, and an [[ref: M-DID]] identifies a member across the lifetime of that membership. A method used for these roles SHOULD provide:
+
+- **Verifiable key history**, so that a verifier can establish which key was authoritative when a credential was signed rather than only which key is authoritative now. This matters because a DTG credential may be presented long after issuance, and [Security Considerations](#security-considerations) requires verifiers to validate the verification method.
+- **Key rotation without changing the identifier**, so that an edge of the graph survives key compromise. An identifier that cannot rotate makes every credential issued under it unrecoverable on compromise.
+- **Pre-rotation or an equivalent commitment to successor keys**, limiting what an attacker holding a current key can do.
+- **Independence from a single operator or hosting location**, so that loss of a domain does not sever the identifier from the graph built on it.
+- **Discoverable service endpoints**, since the [[ref: VTA]] endpoints, `credentialStatus` mechanism, and [trust registry](https://glossary.trustoverip.org/#term:trust-registry) references relied on elsewhere in this specification are resolved through them.
+
+Methods that publish a verifiable, append-only history of DID document versions — such as [did:webvh](https://identity.foundation/didwebvh/), whose log entries commit to successor keys and may be witnessed — satisfy these properties. Methods that resolve to a document with no verifiable history, such as `did:web`, satisfy the last property only; a verifier can establish the current key but not the key that was authoritative at issuance, and there is no recovery path on compromise.
+
+**Pairwise identifiers ([[ref: R-DIDs]] and [[ref: P-DIDs]]).** An [[ref: R-DID]] identifies one peer to one other peer, and a [[ref: P-DID]] identifies a [[ref: persona]] within a bounded context. Both exist to limit correlation, and both are expected to be created in quantity. A method used for these roles SHOULD provide:
+
+- **Cheap creation with no registration step**, since a deployment may mint one identifier per relationship or per persona.
+- **No shared resolution origin**, so that resolving one identifier does not reveal the existence of, or a common controller for, the others. See [Privacy Considerations](#privacy-considerations).
+- **No dependency on infrastructure that observes identifier use**, since a party that resolves or witnesses many of a person's pairwise identifiers is positioned to correlate them regardless of the identifiers themselves.
+
+Peer and key-based methods such as `did:peer` and `did:key` satisfy these properties. A method requiring each identifier to be published at a web origin is a poor fit for these roles even where it is the right choice for a [[ref: C-DID]], because the origin is common to every identifier published under it.
+
+**Mixing methods.** Because the properties above pull in opposite directions — durability and recoverability against disposability and non-correlation — implementations SHOULD expect to use more than one method, rather than seeking a single method that serves every role. Nothing in this specification requires the `issuer` and `credentialSubject.id` of a credential to use the same method, and the examples throughout reflect this: durable issuers are shown with `did:webvh` and pairwise subjects with `did:key` or `did:peer`.
 
 ## Edge Credentials
 
@@ -260,7 +286,7 @@ The holder of a VRC MAY construct a zero-knowledge proof that demonstrates posse
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "MembershipCredential"],
-  "issuer": "did:web:chess-club.example",
+  "issuer": "did:webvh:QmSbCcXWDDJmqE8m1nZ...:chess-club.example",
   "validFrom": "2026-01-06T10:00:00Z",
   "credentialSubject": {
     "id": "did:key:z6MkpTHR8VNs..."
@@ -395,7 +421,7 @@ A VWC's `credentialSubject.id` and `taskContext` alone identify only the observe
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "WitnessCredential"],
-  "issuer": "did:web:witness-service.example",
+  "issuer": "did:webvh:QmVzTd9hRkPqLu4WgXyN...:witness-service.example",
   "validFrom": "2026-01-06T10:00:00Z",
   "taskContext": "thread-abc-123",
   "credentialSubject": {
@@ -502,7 +528,7 @@ No additional schema fields are required. PHC status is determined by governance
     "MembershipCredential",
     "PersonhoodCredential"
   ],
-  "issuer": "did:web:government-idv.example",
+  "issuer": "did:webvh:QmRfN7pKwEbTs2LcMqDh...:government-idv.example",
   "credentialSubject": {
     "id": "did:key:z6MkpTHR8VNs..."
   }
@@ -555,6 +581,7 @@ No additional schema fields are required. PHC status is determined by governance
 4. **Minimal disclosure.** DTG credential schemas are intentionally minimal so that holders can satisfy common predicates (membership, relationship existence) using zero-knowledge or selective disclosure mechanisms without revealing underlying DIDs or credential contents.
 5. **Witness data.** The optional `witnessContext` of a [[ref: VWC]] may reveal information about where and when parties met. Issuers should include only what the witnessing purpose requires, and holders should be able to withhold `witnessContext` details when proving the attestation.
 6. **ZKPs by default.** Implementations should use ZKP presentation by default so that privacy preservation does not require any extra effort on behalf of users.
+7. **Correlation through the resolution layer.** Correlation does not require the credentials themselves. Where several of a party's [[ref: R-DIDs]] or [[ref: P-DIDs]] resolve through common infrastructure — a shared web origin, a shared registry, or a shared set of witnesses observing their updates — that infrastructure can associate identifiers that the credential structure was designed to keep apart, and can observe when each is used. Choosing a DID method for these roles is therefore a privacy decision as much as a key management one; see [DID Method Considerations](#did-method-considerations).
 
 ## Governance Considerations
 
