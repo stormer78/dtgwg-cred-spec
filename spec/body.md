@@ -186,6 +186,27 @@ All DTG credentials share this W3C VC structure (v2.0 shown; see [Legacy System 
 }
 ```
 
+### Digest Encoding
+
+Two credential types reference another credential by cryptographic digest rather than by identifier: the [[ref: VWC]] `digest` property, and the [[ref: VDC]] `delegation.parent` and `delegation.accepts` properties. All three MUST be encoded identically, as specified here.
+
+A digest value MUST be produced as follows:
+
+1. Serialize the referenced credential to its JSON representation and canonicalize it with the JSON Canonicalization Scheme ([JCS, RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785)).
+2. Compute the SHA-256 hash of the resulting UTF-8 bytes.
+3. Form a Multihash value by prefixing the digest with the `sha2-256` algorithm header (`0x12`) and the digest length in bytes (`0x20`), each encoded as a varint, per [CID v1.0 §2.5](https://www.w3.org/TR/cid-1.0/#multihash).
+4. Encode the resulting 34 bytes with the base-58-btc alphabet and prefix the Multibase header `z`, per [CID v1.0 §2.4](https://www.w3.org/TR/cid-1.0/#multibase-0).
+
+This is the encoding defined for the `digestMultibase` property in [VC Data Integrity §2.6](https://www.w3.org/TR/vc-data-integrity/#resource-integrity). A digest of the empty string, for example, is expressed as:
+
+```
+zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n
+```
+
+Issuers MUST use base-58-btc so that a single canonical form exists for any given digest. Verifiers MUST NOT rely on string comparison to determine whether two digest values refer to the same credential: a conforming verifier decodes the Multibase value, decodes the Multihash to recover the algorithm identifier and the raw digest, and compares those. This requirement applies wherever the specification calls for digest values to match — notably when an acceptance VDC's `accepts` is matched against a grant, and when a derived VDC's `parent` is matched against the credential it derives from (see [Delegation Chains](#delegation-chains)).
+
+Where a governing [[ref: VTC]] or [[ref: VTN]] requires a stronger hash, it MAY permit additional Multihash algorithm identifiers registered in [CID v1.0 §2.5](https://www.w3.org/TR/cid-1.0/#multihash). Because the algorithm is carried in the value itself, such a change does not alter the format of the property. Verifiers MUST reject a digest whose Multihash identifies an algorithm they do not accept, rather than treating it as a mismatch.
+
 ## Edge Credentials
 
 This section is normative.
@@ -357,7 +378,7 @@ Credentials expressing authority are out of scope here. Confining the VDC to del
   - `id` (string, REQUIRED): DID of the delegate
   - `delegation` (object, REQUIRED):
     - `scope` (array of strings, REQUIRED): the acts the delegate may perform in the delegator's name. MUST contain at least one entry; the vocabulary is defined by the governing VTC or VTN, as for the `endorsement` structure of a [[ref: VEC]]. A VDC MUST NOT express an unbounded appointment by omitting or emptying `scope`.
-    - `parent` (string, OPTIONAL): the digest of the VDC from which this delegation was derived, when the delegator is itself acting under a delegation. Encoded exactly as the [[ref: VWC]] `digest` property: the SHA-256 hash of the parent credential canonicalized per [JCS, RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785), as the string `sha256:` followed by the lowercase hexadecimal digest. A VDC with no `parent` is a **root delegation**.
+    - `parent` (string, OPTIONAL): the digest of the VDC from which this delegation was derived, when the delegator is itself acting under a delegation. Encoded exactly as the [[ref: VWC]] `digest` property: the SHA-256 hash of the parent credential canonicalized per [JCS, RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785), expressed as a Multibase-encoded Multihash value. See [Digest Encoding](#digest-encoding). A VDC with no `parent` is a **root delegation**.
     - `maxDepth` (integer, OPTIONAL): the number of further re-delegations permitted below this one. A value of `0` prohibits re-delegation. When absent, re-delegation is prohibited.
     - `accepts` (string, OPTIONAL): present only in the acceptance direction; the digest of the grant being accepted, encoded as for `parent`. See [Delegation Edges](#delegation-edges).
 
@@ -410,7 +431,7 @@ Credentials expressing authority are out of scope here. Confining the VDC to del
     "id": "did:peer:2.Ez6LSbysKZ...",
     "delegation": {
       "scope": ["schedule:read", "schedule:propose"],
-      "accepts": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "accepts": "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n"
     }
   },
   "proof": { "//": "..." }
@@ -545,7 +566,7 @@ A VWC's `credentialSubject.id` and `taskContext` alone identify only the observe
 - `taskContext` (string, REQUIRED): `threadId` of the trust task exchange in which the witnessing occurred
 - `credentialSubject` (object, REQUIRED):
   - `id` (string, REQUIRED): DID of the observed party
-  - `digest` (string, REQUIRED): A cryptographic hash of the witnessed VRC, binding the VWC to the specific edge established. The hash MUST be computed as the SHA-256 hash of the credential's JSON representation canonicalized with the JSON Canonicalization Scheme ([JCS, RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785)), and MUST be encoded as the string `sha256:` followed by the lowercase hexadecimal digest.
+  - `digest` (string, REQUIRED): A cryptographic hash of the witnessed VRC, binding the VWC to the specific edge established. The hash MUST be computed as the SHA-256 hash of the credential's JSON representation canonicalized with the JSON Canonicalization Scheme ([JCS, RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785)), and MUST be encoded as a Multibase-encoded Multihash value, as defined for the `digestMultibase` property in [VC Data Integrity §2.6](https://www.w3.org/TR/vc-data-integrity/#resource-integrity). The Multihash MUST use the `sha2-256` algorithm (header `0x12`, length `0x20`) and the Multibase encoding MUST be base-58-btc (prefix `z`), both as defined in [Controlled Identifiers v1.0](https://www.w3.org/TR/cid-1.0/). See [Digest Encoding](#digest-encoding).
   - `witnessContext` (object, OPTIONAL): Context of the witnessing event
     - `event` (string, OPTIONAL): Human-readable event name
     - `sessionId` (string, OPTIONAL): Session or nonce identifier
@@ -566,7 +587,7 @@ A VWC's `credentialSubject.id` and `taskContext` alone identify only the observe
   "taskContext": "thread-abc-123",
   "credentialSubject": {
     "id": "did:key:z6MkpTHR8VNs...",
-    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "digest": "zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n",
     "witnessContext": {
       "event": "EthDenver 2024",
       "sessionId": "session-abc-123",
@@ -707,7 +728,7 @@ No additional schema fields are required. PHC status is determined by governance
 1. **Proof verification.** Verifiers must cryptographically verify the `proof` of every DTG credential, including resolution of the issuer's DID and validation of the verification method, before relying on any claim in the credential.
 2. **Validity period enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.
 3. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a VMC issuer being a recognized VTC, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
-4. **Digest integrity (VWC).** A verifier relying on a VWC's binding to a specific edge must have the referenced VRC available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form, and confirm it matches `digest`; a mismatch invalidates the attestation. Without the referenced VRC in hand, `digest` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed.
+4. **Digest integrity (VWC).** A verifier relying on a VWC's binding to a specific edge must have the referenced VRC available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form, and confirm it matches `digest` — comparing decoded digest bytes rather than encoded strings, as set out in [Digest Encoding](#digest-encoding). A mismatch invalidates the attestation. Without the referenced VRC in hand, `digest` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed.
 5. **Context collapse.** A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of [Trust Task Context Binding](#trust-task-context-binding) exist to prevent this class of attack and must be enforced by verifiers.
 6. **Replay of invitation credentials.** VICs should be issued with short validity periods and should be treated as single-use by the accepting [[ref: VTA]]/[[ref: PEP]], to prevent replay of an intercepted invitation.
 7. **Key compromise.** Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.
@@ -781,6 +802,8 @@ Conformance test suites for this specification have not yet been defined and are
 - [W3C Decentralized Identifiers (DIDs) v1.0](https://www.w3.org/TR/did-1.0/)
 - [IETF RFC 2119: Key words for use in RFCs to Indicate Requirement Levels](https://datatracker.ietf.org/doc/html/rfc2119)
 - [IETF RFC 8785: JSON Canonicalization Scheme (JCS)](https://datatracker.ietf.org/doc/html/rfc8785)
+- [W3C Verifiable Credential Data Integrity v1.0](https://www.w3.org/TR/vc-data-integrity/)
+- [W3C Controlled Identifiers (CIDs) v1.0](https://www.w3.org/TR/cid-1.0/)
 - [ISO 8601: Date and time format](https://www.iso.org/iso-8601-date-and-time-format.html)
 
 ### Informative References
