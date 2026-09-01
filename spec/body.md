@@ -2,7 +2,7 @@
 
 *This section is informative.*
 
-This section provides a visual overview of the DTG Core Credential types and their formal type hierarchy. The three functional categories (edge, invitation, annotation) are descriptive aids only; they do not appear in credential schemas.
+This section provides a visual overview of the DTG Core Credential types and their formal type hierarchy. The four functional categories (edge, invitation, annotation, authority) are descriptive aids only; they do not appear in credential schemas.
 
 ```mermaid
 graph LR
@@ -11,6 +11,7 @@ graph LR
     DTG --> EC(Edge Credentials)
     DTG --> IC(Invitation Credentials)
     DTG --> AC(Annotation Credentials)
+    DTG --> UC(Authority Credentials)
 
     EC --> VRC["VRC - RelationshipCredential"]
     EC --> VMC["VMC - MembershipCredential"]
@@ -18,6 +19,7 @@ graph LR
     AC --> VPC["VPC - PersonaCredential"]
     AC --> VWC["VWC - WitnessCredential"]
     AC --> VEC["VEC - EndorsementCredential"]
+    UC --> VAC["VAC - AuthorityCredential"]
 
     classDef parent fill:#f5f5f5,stroke:#555,stroke-width:2px,color:#000
     classDef cat fill:#eeeeee,stroke:#999,stroke-width:1px,color:#555
@@ -25,11 +27,14 @@ graph LR
     classDef inv fill:#ffe0b2,stroke:#f57c00,stroke-width:2px,color:#000
     classDef ann fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px,color:#000
 
+    classDef auth fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
+
     class DTG parent
-    class EC,IC,AC cat
+    class EC,IC,AC,UC cat
     class VMC,VRC edge
     class VIC inv
     class VPC,VEC,VWC ann
+    class VAC auth
 ```
 
 ### Formal W3C Type Hierarchy
@@ -42,7 +47,8 @@ VerifiableCredential
     ├── InvitationCredential (VIC)
     ├── PersonaCredential (VPC)
     ├── EndorsementCredential (VEC)
-    └── WitnessCredential (VWC)
+    ├── WitnessCredential (VWC)
+    └── AuthorityCredential (VAC)
 ```
 
 > **Note:** The [[ref: r-card]] (relationship card) that appeared in earlier drafts of this specification is a [[ref: verifiable data structure]] (VDS), not a `DTGCredential` subtype. It will be defined in the planned **DTG Verifiable Data Structures** specification (see [Related Specifications](#related-specifications)).
@@ -399,7 +405,7 @@ This section is normative.
 }
 ```
 
-> **Editor's note — roles and access control:** Roles and access control policy details are primarily inferred from the issuer plus the [trust registry](https://glossary.trustoverip.org/#term:trust-registry). An open question for this Working Draft is whether any of this information should be embedded in the VIC itself.
+> **Editor's note — roles and access control:** Roles and access control policy details are primarily inferred from the issuer plus the [trust registry](https://glossary.trustoverip.org/#term:trust-registry). An earlier open question for this Working Draft was whether any of this information should be embedded in the VIC itself. It should not: what a party may *do* is conferred by a [[ref: VAC]] (see [Authority Credentials](#authority-credentials)), which can be reissued or attenuated without touching the invitation that admitted them.
 
 ## Annotation Credentials
 
@@ -523,6 +529,162 @@ A VWC's `credentialSubject.id` and `taskContext` alone identify only the observe
 }
 ```
 
+## Authority Credentials
+
+This section is normative.
+
+Authority credentials confer permission. They differ from every other category
+in what they do to the graph: an edge credential establishes that two nodes are
+connected, an annotation credential attaches a claim to structure that already
+exists, and an invitation credential bootstraps a node into a community. An
+authority credential creates none of those. It states what a party **may do**
+within a scope that some node governs.
+
+The distinction that matters most is between an authority credential and an
+[[ref: VEC]]. An endorsement is a statement *about* a party — that they are
+skilled, trusted, or of good standing — and a verifier decides for itself what
+to do with that statement. An authority credential is a statement *to* a
+verifier: the issuer, who governs the scope, has decided. Conflating the two
+puts a decision that belongs to the governing party into a claim that reads as
+reputation, and leaves verifiers to infer permission from adjectives.
+
+### VAC (Verifiable Authority Credential)
+
+**Purpose:** Confers authority on a party to perform specified actions within a
+named scope governed by the issuer.
+
+**Schema:**
+
+- `type` (array, REQUIRED): MUST include `"AuthorityCredential"`
+- `issuer` (string, REQUIRED): DID of the party that governs the scope — a
+  [[ref: C-DID]], the DID of a [[ref: DTG node]] such as a shared resource, or
+  the [[ref: M-DID]] of a holder attenuating authority they themselves hold
+  (see *Attenuation* below)
+- `credentialSubject` (object, REQUIRED):
+  - `id` (string, REQUIRED): DID of the party receiving the authority
+  - `authority` (object, REQUIRED):
+    - `scope` (string, REQUIRED): the DID or URI the authority applies to. A
+      verifier MUST reject a VAC whose `scope` does not match the resource
+      being accessed; scope matching is exact unless the governing party
+      publishes a containment rule.
+    - `actions` (array of strings, REQUIRED): the permitted actions, drawn
+      from a vocabulary the governing party defines. MUST NOT be empty — an
+      empty array is not a wildcard, and a verifier MUST treat it as
+      conferring nothing.
+    - `parent` (string, OPTIONAL): the `id` of the VAC this one was attenuated
+      from. Absent means this VAC was issued directly by the governing party.
+    - `audience` (string, OPTIONAL): a DID that MUST be the presenter for this
+      VAC to be accepted. Absent means any holder may present it.
+- `validUntil` (string, RECOMMENDED): authority that does not expire is
+  authority nobody can withdraw by waiting.
+
+**Example (a member granted write access to a shared resource):**
+
+```json
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://firstperson.network/credentials/dtg/v1",
+    "https://w3id.org/security/suites/ed25519-2020/v1"
+  ],
+  "type": ["VerifiableCredential", "DTGCredential", "AuthorityCredential"],
+  "id": "urn:uuid:6f5c1b2a-9d4e-4a77-8c31-1e0b7a5d2f90",
+  "issuer": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
+  "validFrom": "2026-01-06T10:00:00Z",
+  "validUntil": "2026-07-06T10:00:00Z",
+  "credentialSubject": {
+    "id": "did:key:z6MkpTHR8VNs...",
+    "authority": {
+      "scope": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
+      "actions": ["read", "write", "curate"]
+    }
+  },
+  "proof": { "//": "..." }
+}
+```
+
+### Attenuation
+
+A VAC holder MAY issue a further VAC conferring a **subset** of the authority
+they hold, without involving the governing party. This is what allows a party to
+equip an agent, a device, or a short-lived session with only the authority that
+task requires, rather than lending it their own.
+
+An attenuated VAC:
+
+- MUST set `issuer` to the attenuating holder's DID.
+- MUST set `authority.parent` to the `id` of the VAC being attenuated.
+- MUST NOT confer any action absent from the parent's `actions`.
+- MUST NOT specify a `validUntil` later than the parent's.
+- MUST NOT widen `scope`.
+- SHOULD set `audience` to the party expected to present it.
+
+**Verification.** A verifier presented with a VAC that carries `parent` MUST
+resolve and verify the entire chain to a VAC issued by the governing party, and
+MUST reject the chain if any link widens what its parent conferred, in actions,
+scope, or validity period. A verifier that checks only the presented credential
+has verified nothing: attenuation is only a narrowing if somebody walks the
+chain. Verifiers SHOULD impose a maximum chain depth and reject chains
+exceeding it.
+
+**Example (a member attenuating read-only, short-lived authority to their AI agent):**
+
+```json
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    "https://firstperson.network/credentials/dtg/v1",
+    "https://w3id.org/security/suites/ed25519-2020/v1"
+  ],
+  "type": ["VerifiableCredential", "DTGCredential", "AuthorityCredential"],
+  "id": "urn:uuid:b81d0f44-2c17-4e59-9f6a-3d5c8e7a1042",
+  "issuer": "did:key:z6MkpTHR8VNs...",
+  "validFrom": "2026-01-06T10:00:00Z",
+  "validUntil": "2026-01-06T14:00:00Z",
+  "credentialSubject": {
+    "id": "did:key:z6MkfR2aQ9Xv...",
+    "authority": {
+      "scope": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
+      "actions": ["read"],
+      "parent": "urn:uuid:6f5c1b2a-9d4e-4a77-8c31-1e0b7a5d2f90",
+      "audience": "did:key:z6MkfR2aQ9Xv..."
+    }
+  },
+  "proof": { "//": "..." }
+}
+```
+
+### Authority is not delegation
+
+A VAC authorizes its subject to act **in their own name**, within a scope. It
+does not authorize acting *on behalf of* another party, and a verifier MUST NOT
+read it as doing so. The two are separate questions — *may this party do this
+here?* and *may this party stand in for that one?* — and answering both with one
+credential means a verifier cannot tell which it has been shown.
+
+> **Editor's note:** A companion **verifiable delegation credential** (VDC)
+> covering acting-on-behalf-of is proposed separately. Whether the two share
+> this `Authority Credentials` category, or delegation warrants its own, is left
+> for the Working Group to settle once both are before it. The categories are
+> informative groupings and this question does not affect either credential's
+> schema.
+
+### Authority and membership are separate credentials
+
+A VAC does not attest membership and MUST NOT be accepted as evidence of it; a
+[[ref: VMC]] does not confer authority and MUST NOT be accepted as evidence of
+that. Keeping them separate lets a governing party change what a member may do
+without touching the membership edge, and lets a holder prove authority without
+proving which member they are.
+
+Where a verifier requires **both** — that the presenter is a member *and* holds
+authority — and the presentation is a zero-knowledge proof that withholds the
+subject identifier, the presentation MUST include a proof that both credentials
+share the same subject. Without it, two parties may pool credentials: one
+contributes membership, the other contributes authority, and the combination
+verifies as a single party holding both. See
+[Zero-Knowledge and Selective Disclosure](#zero-knowledge-and-selective-disclosure).
+
 ## Trust Task Context Binding
 
 This section is normative.
@@ -615,6 +777,8 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 *This section is informative.*
 
 1. **Proof verification.** Verifiers must cryptographically verify the `proof` of every DTG credential, including resolution of the issuer's DID and validation of the verification method, before relying on any claim in the credential.
+2. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must resolve and verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
+3. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
 2. **Validity period enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.
 3. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a community-issued VMC's issuer being a recognized VTC, a member-issued VMC's issuer being the subject of the grant it acknowledges, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
 4. **Digest integrity.** A verifier relying on a VWC's binding to a specific edge must have the referenced edge credential available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form with the top-level `proof` member removed, and confirm it matches `digest`; a mismatch invalidates the attestation. Without the referenced credential in hand, `digest` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed. The same requirement applies to the `digest` that a member-issued VMC carries of the community-issued VMC it acknowledges: a mismatch invalidates the acknowledgement, and the membership edge is not complete.
@@ -669,7 +833,7 @@ This specification defines normative requirements, using the keywords defined in
 
 1. **Issuers** — entities that issue DTG credentials. A conforming issuer MUST produce credentials that satisfy the [Base Structure](#base-structure) and the schema of the concrete credential type, including the `taskContext` requirements of [Trust Task Context Binding](#trust-task-context-binding).
 2. **Holders** — entities that store and present DTG credentials. A conforming holder MUST present credentials without altering their contents and MUST include reachable trust task outcome evidence when presenting `taskContext`-bearing credentials as evidence of task completion.
-3. **Verifiers** — entities that verify DTG credentials and presentations. A conforming verifier MUST implement the verification requirements of the [Security Considerations](#security-considerations) and the outcome interpretability rule of [Trust Task Context Binding](#trust-task-context-binding), and MUST support W3C VC Data Model v2.0 verification per [W3C Verifiable Credentials Version Support](#w3c-verifiable-credentials-version-support).
+3. **Verifiers** — entities that verify DTG credentials and presentations. A conforming verifier MUST implement the verification requirements of the [Security Considerations](#security-considerations) and the outcome interpretability rule of [Trust Task Context Binding](#trust-task-context-binding), and MUST support W3C VC Data Model v2.0 verification per [W3C Verifiable Credentials Version Support](#w3c-verifiable-credentials-version-support). A verifier that accepts [[ref: VACs]] MUST additionally implement the chain verification rule of [Attenuation](#attenuation).
 
 ### Conformance Tests
 
