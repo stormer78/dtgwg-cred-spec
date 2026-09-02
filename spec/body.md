@@ -278,6 +278,29 @@ The holder of a VRC MAY construct a zero-knowledge proof that demonstrates posse
 
 **Purpose:** Attests to the membership of an entity in a [[ref: VTC]] or [[ref: VTN]]; two VMCs (one each direction) form a complete [[ref: DTG edge]].
 
+> **Editor's note — membership requires something that has members.** This
+> specification now records that the [[ref: DTG node]] types are illustrative
+> rather than closed, which invites the question of whether a VMC may bind to
+> any of them. It may not, and the constraint is worth stating before the
+> question is asked in a form that assumes otherwise: **a VMC binds a member to
+> a node that *has members*.** A [[ref: VTC]] has members. A [[ref: VTN]] has
+> members. A service has registered clients, and a device has authorized
+> identities — both are collectives, whatever else they are.
+>
+> A **person is not a collective**, and a VMC MUST NOT be read as attesting
+> membership *in* one. That relationship already has two credentials that fit
+> it: a [[ref: VRC]] where the parties are peers, and a delegation credential
+> where one acts in the other's name. Reading membership onto a person would
+> re-collapse a distinction the catalog spends effort keeping — the same
+> collapse the [Authority](#vac-verifiable-authority-credential) section
+> describes between asserting something about a party and conferring something
+> on them.
+>
+> This note states a **constraint**, not a broadening: it does not extend what a
+> VMC may bind to beyond the VTC and VTN the schema below names. It records the
+> boundary that any future broadening should respect, so that the question the
+> node-type change raises has a bounded answer rather than an open one.
+
 **Schema:**
 
 A VMC is issued in each direction of a membership edge. The two directions are distinguished by the issuer and subject rules below together with the presence of `digest`, not by separate type strings. Where both endpoints are C-DIDs, as in VTN membership, the issuer and subject rules do not distinguish the directions and `digest` is the discriminator: a VMC carrying it is a member-issued acknowledgement, and a VMC without it is a community-issued grant.
