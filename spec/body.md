@@ -570,7 +570,10 @@ named scope governed by the issuer.
     - `actions` (array of strings, REQUIRED): the permitted actions, drawn
       from a vocabulary the governing party defines. MUST NOT be empty — an
       empty array is not a wildcard, and a verifier MUST treat it as
-      conferring nothing.
+      conferring nothing. Action strings are compared as exact,
+      case-sensitive strings; a verifier MUST NOT infer that one action
+      implies another (`"admin"` does not grant `"write"` unless the
+      governing party's VAC says both).
     - `parent` (string, OPTIONAL): the `id` of the VAC this one was attenuated
       from. Absent means this VAC was issued directly by the governing party.
     - `audience` (string, OPTIONAL): a DID that MUST be the presenter for this
@@ -620,12 +623,35 @@ An attenuated VAC:
 - SHOULD set `audience` to the party expected to present it.
 
 **Verification.** A verifier presented with a VAC that carries `parent` MUST
-resolve and verify the entire chain to a VAC issued by the governing party, and
-MUST reject the chain if any link widens what its parent conferred, in actions,
-scope, or validity period. A verifier that checks only the presented credential
-has verified nothing: attenuation is only a narrowing if somebody walks the
-chain. Verifiers SHOULD impose a maximum chain depth and reject chains
-exceeding it.
+verify the entire chain to a VAC issued by the governing party, and MUST reject
+the chain if any link widens what its parent conferred, in actions, scope, or
+validity period. A verifier that checks only the presented credential has
+verified nothing: attenuation is only a narrowing if somebody walks the chain.
+
+**The holder presents the chain; the verifier does not fetch it.** A
+presentation carrying an attenuated VAC MUST include every VAC from the
+presented one up to and including the one issued by the governing party. A
+verifier MUST NOT dereference `authority.parent` over the network to obtain a
+link it was not given, and MUST reject a chain it cannot complete from the
+presentation alone.
+
+This is a deliberate constraint, not an omission. Resolving parents by
+dereference would make verification depend on network availability, turn every
+`id` into a server-side request the verifier can be induced to make against an
+address of the holder's choosing, and leak to the issuer — or to whoever hosts
+the identifier — when and how often a credential is used. Bearer-side
+presentation keeps verification offline, constant in its network behaviour, and
+free of that correlation channel. `id` values in a chain are therefore
+identifiers, not locators, and need not resolve to anything.
+
+**Chain depth is bounded.** A verifier MUST enforce a maximum chain depth and
+MUST NOT accept a chain of more than **8** VACs including the one issued by the
+governing party. Chain verification is linear in depth and runs on every
+presentation, so an unbounded chain is a denial-of-service vector against the
+verifier. The known uses need far less — a person attenuating to an agent is
+depth 2, and an agent attenuating to a sub-agent is depth 3 — so issuers SHOULD
+stay well below the ceiling, and a party finding itself near it should treat
+that as a signal the authority is being re-delegated further than intended.
 
 **Example (a member attenuating read-only, short-lived authority to their AI agent):**
 
@@ -661,6 +687,30 @@ does not authorize acting *on behalf of* another party, and a verifier MUST NOT
 read it as doing so. The two are separate questions — *may this party do this
 here?* and *may this party stand in for that one?* — and answering both with one
 credential means a verifier cannot tell which it has been shown.
+
+> **Editor's note — the `actions` vocabulary is deliberately open, and that
+> has a cost.** Each governing party defines its own action strings, which is
+> what lets a room, a community and a service each grant what makes sense for
+> it without a registry negotiating between them. The cost is that `"write"`
+> issued by one governing party carries no defined relationship to `"write"`
+> issued by another: the strings are only meaningful within the scope that
+> issued them, and a verifier that generalises across scopes is reading
+> something the specification does not say. That is tolerable while authority
+> is checked by the party governing the scope, which is the case this
+> specification describes. It would need revisiting if VACs are ever expected
+> to be interpreted across governance boundaries — a shared core vocabulary
+> with room for extension is the obvious answer, and is deliberately not
+> attempted here.
+
+> **Editor's note — identifying non-community, non-member nodes.** The VID
+> taxonomy defines four types ([[ref: R-DIDs]], [[ref: M-DIDs]],
+> [[ref: C-DIDs]], [[ref: P-DIDs]]), and a service node — a mediator, a DID
+> host, a trust registry — is none of them, though it holds an identifier and
+> forms edges like any other node. A VAC naming such a node as its `scope`
+> works regardless, since `scope` is a DID or URI rather than a typed VID. But
+> the gap predates this credential and is worth closing: either a further VID
+> type, or a general node identifier of which the existing four are
+> specialisations.
 
 > **Editor's note:** A companion **verifiable delegation credential** (VDC)
 > covering acting-on-behalf-of is proposed separately. Whether the two share
@@ -777,15 +827,17 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 *This section is informative.*
 
 1. **Proof verification.** Verifiers must cryptographically verify the `proof` of every DTG credential, including resolution of the issuer's DID and validation of the verification method, before relying on any claim in the credential.
-2. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must resolve and verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
-3. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
-2. **Validity period enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.
-3. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a community-issued VMC's issuer being a recognized VTC, a member-issued VMC's issuer being the subject of the grant it acknowledges, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
-4. **Digest integrity.** A verifier relying on a VWC's binding to a specific edge must have the referenced edge credential available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form with the top-level `proof` member removed, and confirm it matches `digest`; a mismatch invalidates the attestation. Without the referenced credential in hand, `digest` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed. The same requirement applies to the `digest` that a member-issued VMC carries of the community-issued VMC it acknowledges: a mismatch invalidates the acknowledgement, and the membership edge is not complete.
-5. **Context collapse.** A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of [Trust Task Context Binding](#trust-task-context-binding) exist to prevent this class of attack and must be enforced by verifiers.
-6. **Replay of invitation credentials.** VICs should be issued with short validity periods and should be treated as single-use by the accepting [[ref: VTA]]/[[ref: PEP]], to prevent replay of an intercepted invitation.
-7. **Key compromise.** Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.
-8. **Unconsented membership assertion.** A community-issued VMC alone does not establish that the named entity agreed to be a member, since a community can issue one without that party's involvement. Verifiers evaluating a membership claim made by anyone other than the member should require the member-issued VMC of the pair, per [Membership Edge Completion](#membership-edge-completion).
+2. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
+3. **Chain resolution is bearer-side by design.** Verifiers must not dereference `authority.parent` to fetch a link they were not presented. Doing so makes verification depend on network availability, exposes the verifier to server-side request forgery against an address the holder chooses, and signals credential use to whoever hosts the identifier.
+4. **Chain depth is a denial-of-service surface.** Verification is linear in depth and runs on every presentation, so the maximum-depth rule is a resource bound, not a stylistic one.
+5. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
+6. **Validity period enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.
+7. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a community-issued VMC's issuer being a recognized VTC, a member-issued VMC's issuer being the subject of the grant it acknowledges, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
+8. **Digest integrity.** A verifier relying on a VWC's binding to a specific edge must have the referenced edge credential available, recompute the SHA-256 hash over its JCS (RFC 8785) canonical form with the top-level `proof` member removed, and confirm it matches `digest`; a mismatch invalidates the attestation. Without the referenced credential in hand, `digest` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed. The same requirement applies to the `digest` that a member-issued VMC carries of the community-issued VMC it acknowledges: a mismatch invalidates the acknowledgement, and the membership edge is not complete.
+9. **Context collapse.** A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of [Trust Task Context Binding](#trust-task-context-binding) exist to prevent this class of attack and must be enforced by verifiers.
+10. **Replay of invitation credentials.** VICs should be issued with short validity periods and should be treated as single-use by the accepting [[ref: VTA]]/[[ref: PEP]], to prevent replay of an intercepted invitation.
+11. **Key compromise.** Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.
+12. **Unconsented membership assertion.** A community-issued VMC alone does not establish that the named entity agreed to be a member, since a community can issue one without that party's involvement. Verifiers evaluating a membership claim made by anyone other than the member should require the member-issued VMC of the pair, per [Membership Edge Completion](#membership-edge-completion).
 
 ## Privacy Considerations
 
