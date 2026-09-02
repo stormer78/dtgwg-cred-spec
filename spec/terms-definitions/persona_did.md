@@ -1,3 +1,3 @@
 [[def: P-DID, persona DID, P-DIDs]]
 
-~ A [decentralized identifier](https://glossary.trustoverip.org/#term:decentralized-identifier) (DID) used by one party to assert a [[ref: persona]] to the counterparty in a [trust relationship](https://glossary.trustoverip.org/#term:trust-relationship). In a [[ref: DTG]], a persona DID is asserted in a [[ref: VPC]].
+~ **Retired as a normative type.** Informal shorthand for the identifier under which a party asserts a [[ref: persona]] to a counterparty. Normatively it is an identifier whose declared [[ref: correlation scope]] is `linked` — known to a set the holder chooses, which is what a persona is for. **The persona is asserted by the [[ref: VPC]], not by the identifier**; that machinery is unchanged.
