@@ -2,7 +2,7 @@
 
 *This section is informative.*
 
-This section provides a visual overview of the DTG Core Credential types and their formal type hierarchy. The four functional categories (edge, invitation, annotation, authority) are descriptive aids only; they do not appear in credential schemas.
+This section provides a visual overview of the DTG Core Credential types and their formal type hierarchy. The functional categories (edge, invitation, annotation) are descriptive aids only; they do not appear in credential schemas. The [[ref: VAC]] belongs to none of them — it neither forms a graph edge nor annotates existing structure — and is shown attached directly to `DTGCredential`. See the editorial note in [VAC](#vac-verifiable-authority-credential).
 
 ```mermaid
 graph LR
@@ -11,7 +11,6 @@ graph LR
     DTG --> EC(Edge Credentials)
     DTG --> IC(Invitation Credentials)
     DTG --> AC(Annotation Credentials)
-    DTG --> UC(Authority Credentials)
 
     EC --> VRC["VRC - RelationshipCredential"]
     EC --> VMC["VMC - MembershipCredential"]
@@ -19,7 +18,7 @@ graph LR
     AC --> VPC["VPC - PersonaCredential"]
     AC --> VWC["VWC - WitnessCredential"]
     AC --> VEC["VEC - EndorsementCredential"]
-    UC --> VAC["VAC - AuthorityCredential"]
+    DTG --> VAC["VAC - AuthorityCredential"]
 
     classDef parent fill:#f5f5f5,stroke:#555,stroke-width:2px,color:#000
     classDef cat fill:#eeeeee,stroke:#999,stroke-width:1px,color:#555
@@ -30,7 +29,7 @@ graph LR
     classDef auth fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#000
 
     class DTG parent
-    class EC,IC,AC,UC cat
+    class EC,IC,AC cat
     class VMC,VRC edge
     class VIC inv
     class VPC,VEC,VWC ann
@@ -529,26 +528,33 @@ A VWC's `credentialSubject.id` and `taskContext` alone identify only the observe
 }
 ```
 
-## Authority Credentials
+## VAC (Verifiable Authority Credential)
 
 This section is normative.
 
-Authority credentials confer permission. They differ from every other category
-in what they do to the graph: an edge credential establishes that two nodes are
-connected, an annotation credential attaches a claim to structure that already
-exists, and an invitation credential bootstraps a node into a community. An
-authority credential creates none of those. It states what a party **may do**
-within a scope that some node governs.
+A VAC confers permission. It differs from every other credential here in what it
+does to the graph: an edge credential establishes that two nodes are connected,
+an annotation credential attaches a claim to structure that already exists, and
+an invitation credential bootstraps a node into a community. A VAC creates none
+of those. It states what a party **may do** within a scope that some node
+governs.
 
-The distinction that matters most is between an authority credential and an
-[[ref: VEC]]. An endorsement is a statement *about* a party — that they are
-skilled, trusted, or of good standing — and a verifier decides for itself what
-to do with that statement. An authority credential is a statement *to* a
-verifier: the issuer, who governs the scope, has decided. Conflating the two
-puts a decision that belongs to the governing party into a claim that reads as
-reputation, and leaves verifiers to infer permission from adjectives.
+The distinction that matters most is between a VAC and a [[ref: VEC]]. An
+endorsement is a statement *about* a party — that they are skilled, trusted, or
+of good standing — and a verifier decides for itself what to do with that
+statement. A VAC is a statement *to* a verifier: the issuer, who governs the
+scope, has decided. Conflating the two puts a decision that belongs to the
+governing party into a claim that reads as reputation, and leaves verifiers to
+infer permission from adjectives.
 
-### VAC (Verifiable Authority Credential)
+> **Editorial note — placement.** This is deliberately a section rather than a
+> new "Authority Credentials" category, following the reasoning in
+> [issue #28](https://github.com/trustoverip/dtgwg-cred-spec/issues/28): a
+> category with a single member is the structural problem that issue exists to
+> remove, and adding a fourth one would repeat it. If #28 lands as proposed, the
+> VAC and the VIC sit as peer sections after the two real categories. If the WG
+> would rather keep categories, this section is one heading away from becoming
+> one.
 
 **Purpose:** Confers authority on a party to perform specified actions within a
 named scope governed by the issuer.
@@ -702,22 +708,45 @@ credential means a verifier cannot tell which it has been shown.
 > with room for extension is the obvious answer, and is deliberately not
 > attempted here.
 
-> **Editor's note — identifying non-community, non-member nodes.** The VID
-> taxonomy defines four types ([[ref: R-DIDs]], [[ref: M-DIDs]],
-> [[ref: C-DIDs]], [[ref: P-DIDs]]), and a service node — a mediator, a DID
-> host, a trust registry — is none of them, though it holds an identifier and
-> forms edges like any other node. A VAC naming such a node as its `scope`
-> works regardless, since `scope` is a DID or URI rather than a typed VID. But
-> the gap predates this credential and is worth closing: either a further VID
-> type, or a general node identifier of which the existing four are
-> specialisations.
+> **Editor's note — identifying service nodes, and why
+> [issue #22](https://github.com/trustoverip/dtgwg-cred-spec/issues/22) already
+> fixes it.** Adding services to the node types surfaces a gap: the four VID
+> types ([[ref: R-DIDs]], [[ref: M-DIDs]], [[ref: C-DIDs]], [[ref: P-DIDs]])
+> describe a member, a community, a persona, or a peer, and a mediator or trust
+> registry is none of those — though it holds an identifier and forms edges like
+> any other node.
+>
+> That is the same defect #22 identifies rather than a new one: each VID name
+> encodes both *what the identifier is attached to* and *how widely it may be
+> correlated*, and the role half is already carried by the credential the
+> identifier appears in. A service node has nowhere to go precisely because the
+> taxonomy enumerates roles. Under #22's correlation-scope axis it needs no new
+> type at all — a mediator's identifier is simply `public`, and #22's principle
+> that **roles are conferred by credentials, scope is declared by the holder**
+> is exactly what a VAC does for a service: the credential says what it may do,
+> the identifier says only how far it may be correlated.
+>
+> A VAC is unaffected either way, since `scope` is a DID or URI rather than a
+> typed VID. Recorded here as a further data point for #22, not as a competing
+> proposal.
 
-> **Editor's note:** A companion **verifiable delegation credential** (VDC)
-> covering acting-on-behalf-of is proposed separately. Whether the two share
-> this `Authority Credentials` category, or delegation warrants its own, is left
-> for the Working Group to settle once both are before it. The categories are
-> informative groupings and this question does not affect either credential's
-> schema.
+> **Editor's note — this is the credential the VDC left room for.**
+> [PR #19](https://github.com/trustoverip/dtgwg-cred-spec/pull/19) proposes a
+> **verifiable delegation credential** covering acting-on-behalf-of, and draws
+> the same line from the other side: its own table records *"May this party do
+> this thing, as itself? — authority, **not defined in this specification**"*,
+> and it states that the word *authority* is deliberately left free so that
+> "if the WG later wants a verifiable authority credential, it can be defined
+> without reinterpreting the VDC or contending with it for the same semantic
+> ground."
+>
+> This is that credential, and the two are complementary rather than
+> overlapping: a VDC moves the question of authority to the delegator; a VAC
+> answers it. The reach of a delegated act is the intersection of what the VDC
+> appoints the delegate for and what the delegator may itself do — and after
+> this section, that second half has a credential that can express it. Note
+> also that #19 proposes the VDC as an **edge** credential, so no shared
+> category question arises.
 
 ### Authority and membership are separate credentials
 
