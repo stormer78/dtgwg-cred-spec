@@ -369,16 +369,16 @@ A [[ref: DTG edge credential]] whose `proof` verifies establishes that its issue
 An edge credential is **verifiable as a DTG edge by a given verifier** when both of the following hold:
 
 1. The credential satisfies the verification requirements of [Security Considerations](#security-considerations).
-2. The verifier can establish that the credential's issuer holds a [[ref: VMC]] issued by a [[ref: VTC]] in the anchor set that verifier accepts.
+2. The verifier can establish, per [Membership Edge Completion](#membership-edge-completion), that the credential's issuer's membership in a [[ref: VTC]] in the anchor set that verifier accepts is complete.
 
 Edge verifiability is therefore a property of a credential *with respect to a verifier*, not of the credential alone. The same credential MAY be an edge to a verifier that accepts a given anchor set and not an edge to one that does not, and neither verifier is in error. A [[ref: VTN]] is the common case of such an anchor set, but this specification does not require a verifier to be reasoning within a VTN, nor require any VTN to exist.
 
-Condition 2 MAY be satisfied by either of two routes, which are equivalent for the purposes of this section:
+Condition 2 MAY be satisfied by either of two routes:
 
-- **By disclosure**, where the credential carries [[ref: M-DIDs]] whose VMCs the verifier resolves and checks against its anchor set.
+- **By disclosure**, where the credential carries [[ref: M-DIDs]] and the verifier obtains the community-issued and member-issued [[ref: VMC]] pair (or the issuer's own demonstration of its community-issued VMC, per [Membership Edge Completion](#membership-edge-completion)) and checks the issuing VTC against its anchor set.
 - **By proof**, where the holder presents a [Community-Anchored Zero-Knowledge Proof](#community-anchored-zero-knowledge-proof), which establishes the same predicate without revealing the DIDs or the credentials.
 
-Neither route is privileged. A VRC carrying [[ref: R-DIDs]], presented with a valid community-anchored proof, is an edge on the same terms as one carrying M-DIDs presented by disclosure. Because the pairwise form is the one this specification RECOMMENDS on privacy grounds (see [Unilateral Relationship Identification](#unilateral-relationship-identification) and [Privacy Considerations](#privacy-considerations)), a definition of edge verifiability that admitted only the disclosure route would exclude the construction the specification recommends.
+Neither route is privileged in principle. A VRC carrying [[ref: R-DIDs]], presented with a valid community-anchored proof, is an edge on the same terms as one carrying M-DIDs presented by disclosure. Today's construction establishes the two memberships unevenly, however: for the holder's own membership (proof statement 2), the proof is equivalent to the holder disclosing their own completed VMC pair; for the counterparty's membership (proof statement 3), it currently establishes only that the community attested it, not that the counterparty acknowledged it — the same open status the note below records for the R-DID/VMC linkage, and one that the trust task and ZK protocol work will need to close in the same pass (see [Community-Anchored Zero-Knowledge Proof](#community-anchored-zero-knowledge-proof)). Because the pairwise form is the one this specification RECOMMENDS on privacy grounds (see [Unilateral Relationship Identification](#unilateral-relationship-identification) and [Privacy Considerations](#privacy-considerations)), a definition of edge verifiability that admitted only the disclosure route would exclude the construction the specification recommends.
 
 Each half of an edge is issued and signed by its own issuer, and is evaluated independently under this section. Nothing here requires a single credential to carry signatures from both peers, requires both halves of an edge to satisfy this section, or requires them to satisfy it by the same route.
 
