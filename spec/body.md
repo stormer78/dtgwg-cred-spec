@@ -1012,14 +1012,14 @@ named scope governed by the issuer.
   is for a [[ref: VDC]] and for a reason the VAC feels more sharply: nothing
   about the subject's current standing is consulted when a VAC is verified, so
   authority that does not expire is authority nobody can withdraw by waiting.
-
-> **Editor's note — withdrawal.** Expiry is at present the only way authority
-> conferred by a VAC is taken back, which is why `validUntil` is required
-> rather than recommended. Revocation — a CONDITIONAL `credentialStatus`, what
-> a verifier checks for it across a chain, and the effect of revoking a VAC on
-> those attenuated from it — is specified in
-> [#39](https://github.com/trustoverip/dtgwg-cred-spec/pull/39), which is cut
-> from this branch and rebases onto `main` once this merges.
+  Expiry is also the one withdrawal mechanism that costs a verifier no network
+  access; see [Withdrawal](#withdrawal).
+- `credentialStatus` (object, CONDITIONAL): a W3C VC status mechanism through
+  which a verifier can determine whether this VAC has been revoked. A VAC MUST
+  carry `credentialStatus` where its validity period exceeds the freshness
+  window the party governing the scope defines for authority at that scope, and
+  MAY omit it otherwise. The status mechanism is determined by that governing
+  party. See [Withdrawal](#withdrawal).
 
 **Example (a member granted write access to a shared resource):**
 
@@ -1034,6 +1034,13 @@ named scope governed by the issuer.
   "issuer": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
   "validFrom": "2026-01-06T10:00:00Z",
   "validUntil": "2026-07-06T10:00:00Z",
+  "credentialStatus": {
+    "id": "https://example.com/rooms/7f3a/status/1#284",
+    "type": "BitstringStatusListEntry",
+    "statusPurpose": "revocation",
+    "statusListIndex": "284",
+    "statusListCredential": "https://example.com/rooms/7f3a/status/1"
+  },
   "credentialSubject": {
     "id": "did:key:z6MkpTHR8VNs...",
     "authority": {
@@ -1063,12 +1070,17 @@ An attenuated VAC:
 - MUST NOT specify a `validUntil` later than the parent's.
 - MUST NOT widen `scope`.
 - SHOULD set `audience` to the party expected to present it.
+- SHOULD carry a `validUntil` short enough that expiry alone bounds the
+  exposure. An attenuating holder is often a person, a device, or an agent
+  rather than an operator of a status list, and may be unreachable at the
+  moment its grant needs taking back; see [Withdrawal](#withdrawal).
 
 **Verification.** A verifier presented with a VAC that carries `parent` MUST
 verify the entire chain to a VAC issued by the governing party, and MUST reject
 the chain if any link widens what its parent conferred, in actions, scope, or
-validity period, or if any link's `issuer` is not the `credentialSubject.id`
-of its parent. The second check is what gives the first its meaning: without
+validity period, if any link's `issuer` is not the `credentialSubject.id`
+of its parent, or if any link that carries `credentialStatus` has been revoked
+(see [Withdrawal](#withdrawal)). The second check is what gives the first its meaning: without
 it, a chain could cite a VAC its issuer never held, and "narrowing" would be
 satisfiable by anyone holding a copy of a governing party's VAC. A verifier that
 checks only the presented credential has verified nothing: attenuation is only
@@ -1126,6 +1138,62 @@ that as a signal the authority is being re-delegated further than intended.
 }
 ```
 
+### Withdrawal
+
+A VAC is withdrawn in one of two ways: it expires, or its issuer revokes it.
+There is no third. A [[ref: VDC]] has a remedy a VAC does not — its verifier
+re-asks the permission question of the delegator at the time of the act, so
+withdrawing the delegator's own authority stops every delegate at once without
+touching a single credential. A VAC *is* that answer rather than a pointer to
+it: nothing about the subject's current standing is consulted at verification,
+and an authority that can neither expire nor be revoked cannot be taken back at
+all.
+
+**Expiry is the primary mechanism.** `validUntil` is REQUIRED on every VAC, and
+issuers SHOULD set it no later than the purpose requires. Expiry costs a
+verifier no network access, discloses nothing to anyone, and cannot fail open
+or closed, so it is the only withdrawal mechanism that survives the offline
+verification this section is built around. A governing party that wants
+authority it can take back quickly issues it for a short period and re-issues
+it, rather than issuing it for a year and relying on a status list to undo it.
+
+**Revocation covers what expiry cannot.** Where authority must be withdrawn
+before it expires — a member leaves, a device is lost, an agent misbehaves —
+the issuer revokes the VAC through the `credentialStatus` it carries. Only the
+issuer of a VAC can revoke it: an attenuating holder revokes what it issued,
+the party governing the scope revokes what it issued, and neither can revoke
+the other's directly.
+
+**Verification.** A verifier MUST check the status of every VAC in a chain that
+carries `credentialStatus`, and MUST reject the chain if any of them has been
+revoked. A VAC that carries none is evaluated on its validity period alone, and
+its absence is not a defect; a governing party MAY require `credentialStatus`
+for a class of authority at its scope, in which case a verifier enforcing that
+policy MUST reject a VAC that omits it. This keeps the network cost of
+verification proportional to what a chain actually claims: short-lived
+attenuations under a long-lived root cost one status check between them, and a
+chain whose every link is short-lived costs none.
+
+**Revocation cascades.** A VAC confers no more than the VAC it was attenuated
+from, so revoking a VAC withdraws every VAC attenuated from it, transitively,
+whether or not the revoking issuer knows those derivations exist. This is what
+makes attenuation safe to permit without the governing party's involvement: a
+governing party that revokes its own grant withdraws the whole tree beneath it
+in a single act, and needs no register of what its holder went on to issue. It
+also means an attenuator's grants die with its own — a holder whose authority
+is revoked cannot leave a working agent behind it.
+
+**A revoked parent is not always visible, and that is the trade.** A verifier
+presented with a chain whose root carries `credentialStatus` learns that the
+root was revoked and rejects the chain. A verifier presented with a chain whose
+links carry none learns nothing beyond their validity periods, and will accept
+an attenuation whose parent was revoked an hour ago. Offline verification bounds
+that exposure rather than removing it, and what bounds it is the shortest
+`validUntil` in the chain. Holders attenuating authority SHOULD keep that value
+as short as the task allows for this reason, and a governing party that cannot
+tolerate the gap SHOULD require `credentialStatus` on the VACs it issues,
+together with a freshness window short enough to close it.
+
 ### Authority is not delegation
 
 A VAC authorizes its subject to act **in their own name**, within a scope. It
@@ -1163,9 +1231,10 @@ verifier MUST NOT read an attenuated VAC as an appointment to act in the
 attenuator's name, nor a VDC as conferring any of the delegator's authority on
 the delegate.
 
-They also differ in what they ask of a verifier. A VAC chain is precommitted
-and offline: every link only narrows what its parent fixed, and the holder
-presents the whole chain. A VDC is live by design: the permission question is
+They also differ in what they ask of a verifier. A VAC chain is precommitted:
+every link only narrows what its parent fixed, the holder presents the whole
+chain, and a verifier reaches the network only for those links that carry
+`credentialStatus` (see [Withdrawal](#withdrawal)). A VDC is live by design: the permission question is
 answered at invocation against the delegator's current standing, so withdrawing
 the delegator's own authority stops every delegate at once without touching a
 single VDC. Folding one into the other would give up whichever of those
@@ -1291,7 +1360,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
   - "Two distinct VRCs exist"
   - "Holder has a valid, unrevoked delegation to act in the name of a member of a recognized VTC, covering act X"
   - "This delegation chain is valid: each scope nests in its parent's, depth is bounded, expiry is monotone, and the root is issued by a member of a recognized VTC" — without disclosing the chain
-  - "Holder holds a VAC conferring action X at scope S, and its chain is valid: each link is issued by its parent's subject, narrows its parent, and the root is issued by the party governing S" — without disclosing the chain
+  - "Holder holds a VAC conferring action X at scope S, and its chain is valid and unrevoked: each link is issued by its parent's subject, narrows its parent, no link is revoked, and the root is issued by the party governing S" — without disclosing the chain
   - "Two credentials presented together share a subject" — required by [Authority and membership are separate credentials](#authority-and-membership-are-separate-credentials) whenever membership and authority are both proven with the subject withheld
 - Detailed ZK protocols and registry-ZK interactions are left to future work
 
@@ -1328,6 +1397,8 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 16. **Chain resolution is bearer-side by design.** `authority.parent` is a digest, so it names nothing a verifier could fetch: every link comes from the presentation, and a chain that cannot be completed from it is rejected. A resolvable reference in its place would make verification depend on network availability, expose the verifier to server-side request forgery against an address the holder chooses, and signal credential use to whoever hosts the identifier.
 17. **Chain depth is a denial-of-service surface.** Verification is linear in depth and runs on every presentation, so the maximum-depth rule is a resource bound, not a stylistic one.
 18. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
+19. **Authority revocation latency (VAC).** A VAC is the answer to the permission question rather than a pointer to it, so nothing about the subject's current standing is consulted at verification and expiry or revocation are the only ways authority is taken back. The usefulness of revocation is bounded by how recently the verifier checked: a verifier holding a cached status accepts an act performed after revocation, and one that fails hard on an unreachable status endpoint turns the issuer's outage into a denial of the scope it governs. Issuers should keep `validUntil` as short as the purpose allows, so that expiry gives a bounded and stated exposure window even where status is unavailable, and governing parties should state the freshness window within which a status check must have been made.
+20. **Revocation cascades down a chain, and is invisible where status is absent (VAC).** Revoking a VAC withdraws everything attenuated from it, which is what lets a governing party withdraw derivations it never saw. The reverse is the exposure: a verifier presented with a chain whose links carry no `credentialStatus` cannot learn that an ancestor was revoked, and will accept an attenuation until the shortest `validUntil` in the chain expires. Holders attenuating authority should keep that period short, and a governing party that cannot tolerate the gap should require status on the VACs it issues.
 ## Privacy Considerations
 
 *This section is informative.*
@@ -1353,6 +1424,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 11. **Scope terms as identifiers.** The `scope` of a VDC is community-defined text that may be narrow enough to identify the delegator, the delegate, or the underlying arrangement. Issuers should choose scope vocabularies that are no more specific than the appointment requires, and holders should be able to prove scope containment in zero knowledge rather than disclosing the full `scope` array.
 12. **Status lookups as a correlation surface.** A `credentialStatus` check is a live lookup: whoever hosts the status list learns which verifier checked which credential, and when. Herd privacy over the list's contents does not touch the fetch itself. This is why the VDC prefers short validity and re-issuance to status where the delegator is reachable, and why a governing VTC or VTN that requires status for a class of delegations should state the correlation it accepts in doing so.
 13. **Chain disclosure.** Establishing representation under a derived VDC requires the verifier to see the whole chain up to the root, whose issuer is the principal. Selective disclosure over the leaf credential does not help, because the disclosure boundary is the chain, not the credential. Holders should expect a derived VDC to reveal its ancestry, and delegators should prefer single-hop appointments where the round trip to the principal is available. The same holds for an attenuated [[ref: VAC]], whose chain the holder presents in full: an agent presenting one discloses to every verifier the identifier of the party that equipped it.
+14. **Status on a root gives back part of what bearer-side presentation bought.** A VAC chain is presented rather than fetched, so verifying one ordinarily tells its issuers nothing. Where the root carries `credentialStatus`, that changes for the root alone: whoever hosts its status list learns that a verifier checked it, and when, which for a chain of attenuations means the governing party observes the timing of activity by agents and devices it never issued to and cannot see. The exposure is one lookup for the whole chain rather than one per link, and it discloses timing rather than content — but it is the reason [Withdrawal](#withdrawal) prefers short validity to status wherever re-issuance is available, and a governing party that requires status should state the correlation it accepts in doing so, as item 12 requires of delegations.
 ## Governance Considerations
 
 *This section is informative.*
@@ -1365,7 +1437,8 @@ This specification deliberately delegates most policy decisions to the governanc
 4. Endorsement vocabularies for [[ref: VECs]] and witnessing policies for [[ref: VWCs]] are defined by the governing VTC or VTN.
 5. Delegation scope vocabularies for [[ref: VDCs]], the status mechanism used for their revocation, the freshness window that determines when a VDC must carry `credentialStatus`, whether re-delegation is permitted for particular acts, and whether delegated acts are recognized at all where personhood is required, are defined by the governing VTC or VTN.
 6. Whether a delegate must independently qualify — hold a [[ref: VMC]] of its own, or meet the same requirements as any other actor — before it may act in another's name is a governance determination, not a property of the VDC. A VDC establishes only that the appointment was made; see [How a Delegation Composes with Authority](#how-a-delegation-composes-with-authority).
-7. New credential types proposed by higher-layer trust task protocol specifications are expected to be coordinated between the DTGWG task forces responsible for credentials and trust tasks.
+7. Action vocabularies for [[ref: VACs]] at a scope, the status mechanism used for their revocation, the freshness window that determines when a VAC must carry `credentialStatus` and how recently a verifier must have checked it, and whether status is required outright for a class of authority, are defined by the party governing that scope — a VTC or VTN through its governance framework, or another [[ref: DTG node]] through whatever it publishes for the scope it governs. See [Withdrawal](#withdrawal).
+8. New credential types proposed by higher-layer trust task protocol specifications are expected to be coordinated between the DTGWG task forces responsible for credentials and trust tasks.
 
 ## Internationalization Considerations
 
@@ -1389,7 +1462,7 @@ This specification defines normative requirements, using the keywords defined in
 
 1. **Issuers** — entities that issue DTG credentials. A conforming issuer MUST produce credentials that satisfy the [Base Structure](#base-structure) and the schema of the concrete credential type, including the `taskContext` requirements of [Trust Task Context Binding](#trust-task-context-binding). Where it declares a [[ref: correlation scope]] for its identifier, a conforming issuer MUST satisfy the declaration requirements of [Correlation Scope](#correlation-scope); a conforming issuer that is a [[ref: VTC]] issuing [[ref: VMCs]] MUST also publish its member-identifier disclosure practice as [Scope the holder cannot declare alone](#scope-the-holder-cannot-declare-alone) requires.
 2. **Holders** — entities that store and present DTG credentials. A conforming holder MUST present credentials without altering their contents and MUST include reachable trust task outcome evidence when presenting `taskContext`-bearing credentials as evidence of task completion.
-3. **Verifiers** — entities that verify DTG credentials and presentations. A conforming verifier MUST implement the verification requirements of the [Security Considerations](#security-considerations) and the outcome interpretability rule of [Trust Task Context Binding](#trust-task-context-binding), and MUST support W3C VC Data Model v2.0 verification per [W3C Verifiable Credentials Version Support](#w3c-verifiable-credentials-version-support). Where a presented identifier carries a declared [[ref: correlation scope]], a conforming verifier MUST apply the verifier requirements of [Correlation Scope](#correlation-scope). A verifier that accepts [[ref: VACs]] MUST additionally implement the chain verification rule of [Attenuation](#attenuation).
+3. **Verifiers** — entities that verify DTG credentials and presentations. A conforming verifier MUST implement the verification requirements of the [Security Considerations](#security-considerations) and the outcome interpretability rule of [Trust Task Context Binding](#trust-task-context-binding), and MUST support W3C VC Data Model v2.0 verification per [W3C Verifiable Credentials Version Support](#w3c-verifiable-credentials-version-support). Where a presented identifier carries a declared [[ref: correlation scope]], a conforming verifier MUST apply the verifier requirements of [Correlation Scope](#correlation-scope). A verifier that accepts [[ref: VACs]] MUST additionally implement the chain verification rule of [Attenuation](#attenuation) and the status-checking rule of [Withdrawal](#withdrawal).
 
 ### Conformance Tests
 
