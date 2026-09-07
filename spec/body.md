@@ -613,7 +613,7 @@ Delegation and authority are distinct, and a VDC expresses only delegation. Keep
 
 | Question | Answered by | The act is attributed to |
 | ---------- | ------------- | -------------------------- |
-| May this party do this thing, as itself? | authority — not defined in this specification | the party itself |
+| May this party do this thing, as itself? | authority — the [[ref: VAC]] | the party itself |
 | May this party act in another's name? | delegation — the VDC | the entity in whose name it acts |
 
 Neither implies the other. A service granted access to a person's mailbox may read that mail as itself; it has not thereby been appointed to send mail in that person's name. Conversely, a delegate appointed to correspond in a person's name holds that appointment whether or not it has been given access to any particular mailbox — and where it has not, the appointment gets it nowhere. The first is authority without delegation; the second is delegation without authority. A credential that conflated them would leave a verifier unable to tell which of the two it had been shown.
@@ -622,8 +622,10 @@ A VDC establishes delegation and nothing else. Guardianship, succession, estate 
 
 **When to use a VDC.** Ask whose name the act is performed in.
 
-- **The actor's own name** — the actor is doing something it has been permitted to do, and the act is attributed to it. This is a question of authority, and a VDC is the wrong credential. This specification does not currently define a credential for it.
+- **The actor's own name** — the actor is doing something it has been permitted to do, and the act is attributed to it. This is a question of authority, and a VDC is the wrong credential; the [[ref: VAC]] is the right one (see [VAC (Verifiable Authority Credential)](#vac-verifiable-authority-credential)).
 - **Another entity's name** — the actor is standing in for that entity, and the act is attributed to that entity. This is delegation, and a VDC is the credential that establishes it.
+
+An AI agent acting for a person can be equipped either way, and the same test decides which; see [Relationship to the VDC](#relationship-to-the-vdc).
 
 #### How a Delegation Composes with Authority
 
@@ -634,7 +636,7 @@ A VDC neither carries authority nor confers it on the delegate. When a delegate 
 Three checks, each independent of the others:
 
 1. **Is this the delegate, and may it act in the delegator's name for this act?** Established by the VDC, together with [Delegation Chains](#delegation-chains) and [Invocation Binding](#invocation-binding). This specification defines this check.
-2. **May the delegator perform this act?** Established by whatever the act requires of the delegator — community membership, a governance framework, an [[ref: IDVC]], a permission credential, or the verifier's own policy. This specification does not define this check, and a VDC does not influence its outcome.
+2. **May the delegator perform this act?** Established by whatever the act requires of the delegator — community membership, a governance framework, an [[ref: IDVC]], a [[ref: VAC]], or the verifier's own policy. This specification does not define this check, and a VDC does not influence its outcome.
 3. **Must the delegate independently qualify?** A governance determination. Some communities will require a delegate to hold a [[ref: VMC]] of its own, or to satisfy the same requirements as any other actor, before it may act for anyone; others will not.
 
 The reach of a delegation is the **intersection** of what the delegator may do and what the VDC chain appoints the delegate for — never the union, and never more than either.
@@ -645,7 +647,7 @@ Three consequences follow, and they answer the question of what, exactly, has be
 - **Withdrawing the delegator's own permission ends the delegate's ability to act immediately**, without revoking the VDC, because check 2 is evaluated at the time of the act rather than at the time of the appointment. Revoking the VDC and withdrawing the underlying permission are different remedies with different reach, and a delegator may need either.
 - **A `scope` may exceed what the delegator itself may do.** This is not an error: a delegator's own permissions change over the life of a durable appointment. A verifier MUST NOT treat such a `scope` as conferring anything beyond what check 2 allows, and issuers SHOULD NOT issue one as a matter of hygiene.
 
-Credentials expressing authority are out of scope here. Confining the VDC to delegation leaves the [[ref: DTGWG]] free to define one separately — a verifiable authority credential, say — without reinterpreting the VDC or contending with it for the same semantic ground.
+Credentials expressing authority are defined separately: the [[ref: VAC]] is one of the things that can satisfy check 2, and a VDC never stands in for it. Confining the VDC to delegation is what lets the two coexist without either reinterpreting the other or contending with it for the same semantic ground; see [Relationship to the VDC](#relationship-to-the-vdc).
 
 **Schema:**
 
@@ -747,7 +749,7 @@ A VDC is not a bearer token. A verifier MUST NOT accept a party as acting in the
 
 Chaining, attenuation, and invocation are well-explored outside the W3C VC data model, notably in [ZCAP-LD](https://w3c-ccg.github.io/zcap-spec/) and [UCAN](https://github.com/ucan-wg/spec). The VDC reuses their mechanics — attenuation-only re-delegation, chains resolving to a recognized root, and binding to a demonstration of key control at invocation — rather than inventing a different set.
 
-The semantics differ, and the distinction in [Delegation and Authority](#delegation-and-authority) is exactly the one at issue: those models chain *permissions*, whereas a VDC chains *representation*. The mechanics are shared because both must answer how a grant narrows as it passes down a chain and how it is bound to the party invoking it, not because the thing being passed is the same.
+The semantics differ, and the distinction in [Delegation and Authority](#delegation-and-authority) is exactly the one at issue: those models chain *permissions*, whereas a VDC chains *representation*. Within this specification, chained permissions are the [[ref: VAC]]'s territory, and its [Attenuation](#attenuation) rules apply the same mechanics to authority. The mechanics are shared because both must answer how a grant narrows as it passes down a chain and how it is bound to the party invoking it, not because the thing being passed is the same.
 
 The VDC expresses those mechanics as a DTG credential, rather than referencing an external capability token, for two reasons. First, a delegation is a durable edge of the graph and is expected to be reasoned about alongside the other DTG edges. Second, this specification's schemas are kept minimal so that holders can satisfy predicates in zero knowledge; an opaque embedded token would place the one payload a verifier most needs to reason about — the scope — outside the reach of that machinery. Mappings between VDCs and these formats are left to future work.
 
@@ -1136,23 +1138,45 @@ credential means a verifier cannot tell which it has been shown.
 > with room for extension is the obvious answer, and is deliberately not
 > attempted here.
 
-> **Editor's note — this is the credential the VDC left room for.**
-> [PR #19](https://github.com/trustoverip/dtgwg-cred-spec/pull/19) proposes a
-> **verifiable delegation credential** covering acting-on-behalf-of, and draws
-> the same line from the other side: its own table records *"May this party do
-> this thing, as itself? — authority, **not defined in this specification**"*,
-> and it states that the word *authority* is deliberately left free so that
-> "if the WG later wants a verifiable authority credential, it can be defined
-> without reinterpreting the VDC or contending with it for the same semantic
-> ground."
->
-> This is that credential, and the two are complementary rather than
-> overlapping: a VDC moves the question of authority to the delegator; a VAC
-> answers it. The reach of a delegated act is the intersection of what the VDC
-> appoints the delegate for and what the delegator may itself do — and after
-> this section, that second half has a credential that can express it. Note
-> also that #19 proposes the VDC as an **edge** credential, so no shared
-> category question arises.
+### Relationship to the VDC
+
+The [[ref: VDC]] and the VAC draw the same line from opposite sides. A VDC
+establishes that one party may act *in another's name*; it never supplies
+authority, and the verifier re-asks the permission question of the delegator,
+live, at the time of the act (see
+[How a Delegation Composes with Authority](#how-a-delegation-composes-with-authority)).
+A VAC answers that question: it is the credential a delegator can hold that
+check 2 of that section looks for. The two compose — the reach of a delegated
+act is the intersection of what the VDC appoints the delegate for and what the
+delegator's own authority covers — and neither substitutes for the other. A
+verifier MUST NOT read an attenuated VAC as an appointment to act in the
+attenuator's name, nor a VDC as conferring any of the delegator's authority on
+the delegate.
+
+They also differ in what they ask of a verifier. A VAC chain is precommitted
+and offline: every link only narrows what its parent fixed, and the holder
+presents the whole chain. A VDC is live by design: the permission question is
+answered at invocation against the delegator's current standing, so withdrawing
+the delegator's own authority stops every delegate at once without touching a
+single VDC. Folding one into the other would give up whichever of those
+properties the merged credential lacked.
+
+**Which one an agent's grant is.** A person equipping an AI agent could, on
+the face of it, do either, and the test in
+[Delegation and Authority](#delegation-and-authority) — whose name is the act
+in? — decides it. The agent example above is a VAC because the agent is to act
+**as itself**: the room records the agent as the actor, the agent answers for
+its acts, and the chain records only who equipped it — that is provenance of
+its authority, not attribution of its acts. The person's own VAC is the ceiling
+the chain narrows from, and nothing else of the person's travels with it:
+authority is not membership, and an agent acting under a VAC is credited with
+nothing a [[ref: PHC]] or a [[ref: VMC]] attests about its principal. If
+instead the room needs the act attributed to the person — the person is
+answerable for it, and the record should say the person acted, through an
+agent — the person issues a VDC, the agent presents it, and the agent's reach
+is whatever the person may itself do. Which of the two a governing party admits
+for agents is a governance determination; that a verifier can always tell which
+it has been shown is what keeping them as separate credentials buys.
 
 ### Authority and membership are separate credentials
 
@@ -1300,7 +1324,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 10. **Delegation correlation.** A [[ref: VDC]] links a delegator and a delegate, and every invocation of it exposes that link to the verifier. A VDC is presented to arbitrary verifiers, each of whom sees the delegator's identifier, so that identifier is known to a holder-chosen set by construction: delegators should issue VDCs from an identifier declared `directed` and scoped to the context in which the appointment will be exercised, rather than from a `public` identifier or from a `directed` one already used across contexts, so that a delegate's activity in one context does not correlate its principal's activity in another. The same applies on the delegate's side: a delegate holding appointments from several principals should accept each under a distinct identifier, since presenting two appointments under one `credentialSubject.id` links the two principals to the verifier without either having chosen it.
 11. **Scope terms as identifiers.** The `scope` of a VDC is community-defined text that may be narrow enough to identify the delegator, the delegate, or the underlying arrangement. Issuers should choose scope vocabularies that are no more specific than the appointment requires, and holders should be able to prove scope containment in zero knowledge rather than disclosing the full `scope` array.
 12. **Status lookups as a correlation surface.** A `credentialStatus` check is a live lookup: whoever hosts the status list learns which verifier checked which credential, and when. Herd privacy over the list's contents does not touch the fetch itself. This is why the VDC prefers short validity and re-issuance to status where the delegator is reachable, and why a governing VTC or VTN that requires status for a class of delegations should state the correlation it accepts in doing so.
-13. **Chain disclosure.** Establishing representation under a derived VDC requires the verifier to see the whole chain up to the root, whose issuer is the principal. Selective disclosure over the leaf credential does not help, because the disclosure boundary is the chain, not the credential. Holders should expect a derived VDC to reveal its ancestry, and delegators should prefer single-hop appointments where the round trip to the principal is available.
+13. **Chain disclosure.** Establishing representation under a derived VDC requires the verifier to see the whole chain up to the root, whose issuer is the principal. Selective disclosure over the leaf credential does not help, because the disclosure boundary is the chain, not the credential. Holders should expect a derived VDC to reveal its ancestry, and delegators should prefer single-hop appointments where the round trip to the principal is available. The same holds for an attenuated [[ref: VAC]], whose chain the holder presents in full: an agent presenting one discloses to every verifier the identifier of the party that equipped it.
 
 ## Governance Considerations
 
