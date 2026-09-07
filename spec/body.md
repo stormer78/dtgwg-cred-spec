@@ -391,7 +391,9 @@ Peer and key-based methods such as `did:peer` and `did:key` satisfy these proper
 **Mixing methods.** Because the properties above pull in opposite directions — durability and recoverability against disposability and non-correlation — implementations should expect to use more than one method, rather than seeking a single method that serves every role. Nothing in this specification requires the `issuer` and `credentialSubject.id` of a credential to use the same method, and the examples throughout reflect this: durable issuers are shown with `did:webvh` and member and peer subjects with `did:key` or `did:peer`.
 ### Digest Encoding
 
-Three credential types reference another credential by cryptographic digest rather than by identifier: the member-issued [[ref: VMC]]'s `digestMultibase` (the grant it acknowledges), the [[ref: VWC]]'s `digestMultibase` (the edge credential it witnesses), and the [[ref: VDC]]'s `delegation.parent` and `delegation.accepts` (the delegation it derives from, or the grant it accepts). All four members MUST be encoded identically, as specified here. The property name `digestMultibase` is the one [VC Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/) defines for a value of this form; `parent` and `accepts` carry the same encoding under names that state their role.
+Four credential types reference another credential by cryptographic digest rather than by identifier: the member-issued [[ref: VMC]]'s `digestMultibase` (the grant it acknowledges), the [[ref: VWC]]'s `digestMultibase` (the edge credential it witnesses), the [[ref: VDC]]'s `delegation.parent` and `delegation.accepts` (the delegation it derives from, or the grant it accepts), and the [[ref: VAC]]'s `authority.parent` (the VAC it was attenuated from). All five members MUST be encoded identically, as specified here. The property name `digestMultibase` is the one [VC Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/) defines for a value of this form; `parent` and `accepts` carry the same encoding under names that state their role.
+
+These references are digests rather than identifiers for two different reasons, and it is worth keeping them apart. Three of them — the acknowledgement's `digestMultibase`, the acceptance's `accepts`, and the witness's `digestMultibase` — are statements *about the exact content* of the credential they name: the member consents to that grant, the delegate to that appointment, the witness attests to that edge, and a verifier re-derives nothing from the referenced credential but takes it as what was consented to or witnessed. An identifier would not do here, because the referenced credential could be re-issued with different claims under the same identifier and carry the consent or attestation with it. The two chain references — a VDC's and a VAC's `parent` — do not need the digest for safety: a verifier re-checks every link against the parent it is presented, so a substituted parent could never widen a chain. They take the same form so that every cross-credential reference in this specification is produced and matched in one way, so that a reference never names anything a verifier could be induced to fetch, and so that no credential has to carry a top-level `id` merely in order to be referenced. The cost is that a re-issued parent does not carry its existing children with it; each must be re-derived, which for a chain of narrowing authority or representation is the intended behaviour.
 
 A digest value MUST be produced as follows:
 
@@ -406,7 +408,7 @@ This is the encoding defined for the `digestMultibase` property in [VC Data Inte
 zQmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n
 ```
 
-Issuers MUST use base-58-btc so that a single canonical form exists for any given digest. Verifiers MUST NOT rely on string comparison to determine whether two digest values refer to the same credential: a conforming verifier decodes the Multibase value, decodes the Multihash to recover the algorithm identifier and the raw digest, and compares those. This requirement applies wherever the specification calls for digest values to match — notably when an acceptance VDC's `accepts` is matched against a grant, and when a derived VDC's `parent` is matched against the credential it derives from (see [Delegation Chains](#delegation-chains)).
+Issuers MUST use base-58-btc so that a single canonical form exists for any given digest. Verifiers MUST NOT rely on string comparison to determine whether two digest values refer to the same credential: a conforming verifier decodes the Multibase value, decodes the Multihash to recover the algorithm identifier and the raw digest, and compares those. This requirement applies wherever the specification calls for digest values to match — notably when an acceptance VDC's `accepts` is matched against a grant, when a derived VDC's `parent` is matched against the credential it derives from (see [Delegation Chains](#delegation-chains)), and when an attenuated VAC's `parent` is matched against the VAC it was attenuated from (see [Attenuation](#attenuation)).
 
 Where a governing [[ref: VTC]] or [[ref: VTN]] requires a stronger hash, it MAY permit additional Multihash algorithm identifiers registered in [CID v1.0 §2.5](https://www.w3.org/TR/cid-1.0/#multihash). Because the algorithm is carried in the value itself, such a change does not alter the format of the property. Verifiers MUST reject a digest whose Multihash identifies an algorithm they do not accept, rather than treating it as a mismatch.
 
@@ -979,11 +981,6 @@ named scope governed by the issuer.
 **Schema:**
 
 - `type` (array, REQUIRED): MUST include `"AuthorityCredential"`
-- `id` (string, REQUIRED): identifier of this VAC. The
-  [Base Structure](#base-structure) leaves `id` optional; a VAC MUST carry one,
-  because the `authority.parent` of any VAC attenuated from it refers to it, and
-  a VAC without one can never be attenuated. It is an identifier, not a
-  locator, and need not resolve to anything (see *Attenuation* below)
 - `issuer` (string, REQUIRED): DID of the party that governs the scope — a
   [[ref: VTC]] or [[ref: VTN]], another [[ref: DTG node]] such as a shared
   resource or service, or a holder attenuating authority they themselves hold
@@ -1004,8 +1001,10 @@ named scope governed by the issuer.
       case-sensitive strings; a verifier MUST NOT infer that one action
       implies another (`"admin"` does not grant `"write"` unless the
       governing party's VAC says both).
-    - `parent` (string, OPTIONAL): the `id` of the VAC this one was attenuated
-      from. Absent means this VAC was issued directly by the governing party.
+    - `parent` (string, OPTIONAL): the digest of the VAC this one was
+      attenuated from, encoded as specified in
+      [Digest Encoding](#digest-encoding). Absent means this VAC was issued
+      directly by the governing party.
     - `audience` (string, OPTIONAL): a DID that MUST be the presenter for this
       VAC to be accepted. Absent means any holder may present it.
 - `validUntil` (string, RECOMMENDED): authority that does not expire is
@@ -1021,7 +1020,6 @@ named scope governed by the issuer.
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "AuthorityCredential"],
-  "id": "urn:uuid:6f5c1b2a-9d4e-4a77-8c31-1e0b7a5d2f90",
   "issuer": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
   "validFrom": "2026-01-06T10:00:00Z",
   "validUntil": "2026-07-06T10:00:00Z",
@@ -1048,7 +1046,8 @@ An attenuated VAC:
 - MUST set `issuer` to the `credentialSubject.id` of the VAC being attenuated
   — the attenuating holder's own DID. Only the party a VAC was issued to may
   attenuate it.
-- MUST set `authority.parent` to the `id` of the VAC being attenuated.
+- MUST set `authority.parent` to the digest of the VAC being attenuated,
+  encoded as specified in [Digest Encoding](#digest-encoding).
 - MUST NOT confer any action absent from the parent's `actions`.
 - MUST NOT specify a `validUntil` later than the parent's.
 - MUST NOT widen `scope`.
@@ -1060,25 +1059,26 @@ the chain if any link widens what its parent conferred, in actions, scope, or
 validity period, or if any link's `issuer` is not the `credentialSubject.id`
 of its parent. The second check is what gives the first its meaning: without
 it, a chain could cite a VAC its issuer never held, and "narrowing" would be
-satisfiable by anyone who knows a governing party's VAC `id`. A verifier that
+satisfiable by anyone holding a copy of a governing party's VAC. A verifier that
 checks only the presented credential has verified nothing: attenuation is only
 a narrowing if somebody walks the chain.
 
 **The holder presents the chain; the verifier does not fetch it.** A
 presentation carrying an attenuated VAC MUST include every VAC from the
-presented one up to and including the one issued by the governing party. A
-verifier MUST NOT dereference `authority.parent` over the network to obtain a
-link it was not given, and MUST reject a chain it cannot complete from the
-presentation alone.
+presented one up to and including the one issued by the governing party, and a
+verifier MUST reject a chain it cannot complete from the presentation alone.
 
-This is a deliberate constraint, not an omission. Resolving parents by
-dereference would make verification depend on network availability, turn every
-`id` into a server-side request the verifier can be induced to make against an
-address of the holder's choosing, and leak to the issuer — or to whoever hosts
-the identifier — when and how often a credential is used. Bearer-side
-presentation keeps verification offline, constant in its network behaviour, and
-free of that correlation channel. `id` values in a chain are therefore
-identifiers, not locators, and need not resolve to anything.
+`parent` is a digest rather than an identifier so that this is structural
+rather than merely required. A digest names nothing that can be fetched:
+verification cannot come to depend on network availability, a verifier cannot
+be induced to make a request against an address of the holder's choosing, and
+nobody who hosts an identifier learns when or how often a credential is used.
+Bearer-side presentation keeps verification offline, constant in its network
+behaviour, and free of that correlation channel. A digest also binds an
+attenuated VAC to the exact claims its issuer narrowed from: re-issuing a
+parent with different claims does not re-parent the VACs attenuated from the
+old one, while re-proofing it with identical claims leaves them undisturbed,
+because the digest excludes `proof` (see [Digest Encoding](#digest-encoding)).
 
 **Chain depth is bounded.** A verifier MUST enforce a maximum chain depth and
 MUST NOT accept a chain of more than **8** VACs including the one issued by the
@@ -1099,7 +1099,6 @@ that as a signal the authority is being re-delegated further than intended.
     "https://w3id.org/security/suites/ed25519-2020/v1"
   ],
   "type": ["VerifiableCredential", "DTGCredential", "AuthorityCredential"],
-  "id": "urn:uuid:b81d0f44-2c17-4e59-9f6a-3d5c8e7a1042",
   "issuer": "did:key:z6MkpTHR8VNs...",
   "validFrom": "2026-01-06T10:00:00Z",
   "validUntil": "2026-01-06T14:00:00Z",
@@ -1108,7 +1107,7 @@ that as a signal the authority is being re-delegated further than intended.
     "authority": {
       "scope": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
       "actions": ["read"],
-      "parent": "urn:uuid:6f5c1b2a-9d4e-4a77-8c31-1e0b7a5d2f90",
+      "parent": "zQmYb3w7dN9KpRt...",
       "audience": "did:key:z6MkfR2aQ9Xv..."
     }
   },
@@ -1296,7 +1295,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 3. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a community-issued VMC's issuer being a recognized VTC, a member-issued VMC's issuer being the subject of the grant it acknowledges, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
 4. **Key compromise.** Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.
 5. **Context collapse.** A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of [Trust Task Context Binding](#trust-task-context-binding) exist to prevent this class of attack and must be enforced by verifiers.
-6. **Digest integrity.** A verifier relying on a VWC's binding to a specific edge must have the referenced edge credential available, recompute the digest over its JCS (RFC 8785) canonical form with the top-level `proof` member removed, and confirm it matches `digestMultibase` — comparing decoded digest bytes rather than encoded strings, as set out in [Digest Encoding](#digest-encoding). A mismatch invalidates the attestation. Without the referenced credential in hand, `digestMultibase` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed. The same requirement applies to the `digestMultibase` that a member-issued VMC carries of the community-issued VMC it acknowledges, and to a VDC's `parent` and `accepts`: a mismatch invalidates the acknowledgement or the derivation, and the edge is not complete.
+6. **Digest integrity.** A verifier relying on a VWC's binding to a specific edge must have the referenced edge credential available, recompute the digest over its JCS (RFC 8785) canonical form with the top-level `proof` member removed, and confirm it matches `digestMultibase` — comparing decoded digest bytes rather than encoded strings, as set out in [Digest Encoding](#digest-encoding). A mismatch invalidates the attestation. Without the referenced credential in hand, `digestMultibase` cannot be resolved to an edge, and the VWC should not be treated as evidence of which edge was witnessed. The same requirement applies to the `digestMultibase` that a member-issued VMC carries of the community-issued VMC it acknowledges, to a VDC's `parent` and `accepts`, and to a VAC's `authority.parent`: a mismatch invalidates the acknowledgement, the derivation, or the attenuation.
 
 ### Membership and invitation
 
@@ -1315,7 +1314,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 ### Authority (VAC)
 
 15. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred, or is issued by a party other than its parent's subject. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
-16. **Chain resolution is bearer-side by design.** Verifiers must not dereference `authority.parent` to fetch a link they were not presented. Doing so makes verification depend on network availability, exposes the verifier to server-side request forgery against an address the holder chooses, and signals credential use to whoever hosts the identifier.
+16. **Chain resolution is bearer-side by design.** `authority.parent` is a digest, so it names nothing a verifier could fetch: every link comes from the presentation, and a chain that cannot be completed from it is rejected. A resolvable reference in its place would make verification depend on network availability, expose the verifier to server-side request forgery against an address the holder chooses, and signal credential use to whoever hosts the identifier.
 17. **Chain depth is a denial-of-service surface.** Verification is linear in depth and runs on every presentation, so the maximum-depth rule is a resource bound, not a stylistic one.
 18. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
 ## Privacy Considerations
