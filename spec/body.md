@@ -1459,7 +1459,52 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
   - "This delegation chain is valid: each scope nests in its parent's, depth is bounded, expiry is monotone, and the root is issued by a member of a recognized VTC" — without disclosing the chain
   - "Holder holds a VAC conferring action X at scope S, and its chain is valid and unrevoked: each link is issued by its parent's subject, narrows its parent, no link is revoked, depth is within every limit its links set, and the root is issued by the party governing S" — without disclosing the chain
   - "Two credentials presented together share a subject" — required by [Authority and membership are separate credentials](#authority-and-membership-are-separate-credentials) whenever membership and authority are both proven with the subject withheld
-- Detailed ZK protocols and registry-ZK interactions are left to future work
+- Detailed ZK protocols and registry-ZK interactions are left to the ZKP task force; what that work is blocked on, and what holds until it lands, is set out below
+
+> **Editor's note — what is waiting on the ZKP task force.** The predicates
+> above are requirements on the schemas rather than constructions. This
+> specification fixes what must be *provable* and leaves *how* to the ZK
+> protocol work, so the list should not be read as describing machinery that
+> exists today.
+>
+> Four of those predicates rest on one primitive no DTG specification yet
+> defines: a proof that two credentials, or two identifiers, are under **common
+> control**, without disclosing either. It is tracked in
+> [#9](https://github.com/trustoverip/dtgwg-cred-spec/issues/9), and it carries:
+>
+> - the [Community-Anchored Zero-Knowledge Proof](#community-anchored-zero-knowledge-proof),
+>   wherever a party's VMC identifier and its VRC identifier differ;
+> - the shared-subject requirement of
+>   [Authority and membership are separate credentials](#authority-and-membership-are-separate-credentials),
+>   which exists precisely to stop two parties pooling one's membership with
+>   the other's authority;
+> - proving a [[ref: VDC]] chain valid without disclosing it, per
+>   [Delegation Chains](#delegation-chains);
+> - proving a [[ref: VAC]] chain valid without disclosing it, per
+>   [Attenuation](#attenuation).
+>
+> [Correlation Scope](#correlation-scope) makes the first of these the ordinary
+> case rather than an edge case. A member who declares `pairwise` toward their
+> community and `pairwise` toward a counterparty holds two identifiers that
+> differ by construction, so a community-anchored proof must cross them rather
+> than read one identifier out of both credentials.
+>
+> Separately, none of the digest-valued members fixed in
+> [Digest Encoding](#digest-encoding) is salted, so a digest over low-entropy
+> content can be reversed by enumeration where the referenced credential is not
+> disclosed. Blinding them is cross-cutting work with the same task force and
+> is tracked in
+> [#38](https://github.com/trustoverip/dtgwg-cred-spec/issues/38).
+>
+> **What holds until this work lands.** Nothing in this specification is
+> unverifiable in the meantime: every requirement here can be checked by
+> presenting the credentials themselves, which is what a holder must do today
+> to satisfy any predicate above. The cost is privacy rather than correctness,
+> and it falls hardest where a chain is involved, because the disclosure
+> boundary is the whole chain rather than the credential presented (see
+> [Privacy Considerations](#privacy-considerations) item 13). Implementations
+> SHOULD NOT defer shipping a rule of this specification on the grounds that
+> its zero-knowledge form is unspecified.
 
 ## Security Considerations
 
