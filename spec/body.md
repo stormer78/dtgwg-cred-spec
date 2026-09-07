@@ -977,6 +977,11 @@ named scope governed by the issuer.
 **Schema:**
 
 - `type` (array, REQUIRED): MUST include `"AuthorityCredential"`
+- `id` (string, REQUIRED): identifier of this VAC. The
+  [Base Structure](#base-structure) leaves `id` optional; a VAC MUST carry one,
+  because the `authority.parent` of any VAC attenuated from it refers to it, and
+  a VAC without one can never be attenuated. It is an identifier, not a
+  locator, and need not resolve to anything (see *Attenuation* below)
 - `issuer` (string, REQUIRED): DID of the party that governs the scope — a
   [[ref: VTC]] or [[ref: VTN]], another [[ref: DTG node]] such as a shared
   resource or service, or a holder attenuating authority they themselves hold
@@ -1038,7 +1043,9 @@ task requires, rather than lending it their own.
 
 An attenuated VAC:
 
-- MUST set `issuer` to the attenuating holder's DID.
+- MUST set `issuer` to the `credentialSubject.id` of the VAC being attenuated
+  — the attenuating holder's own DID. Only the party a VAC was issued to may
+  attenuate it.
 - MUST set `authority.parent` to the `id` of the VAC being attenuated.
 - MUST NOT confer any action absent from the parent's `actions`.
 - MUST NOT specify a `validUntil` later than the parent's.
@@ -1048,8 +1055,12 @@ An attenuated VAC:
 **Verification.** A verifier presented with a VAC that carries `parent` MUST
 verify the entire chain to a VAC issued by the governing party, and MUST reject
 the chain if any link widens what its parent conferred, in actions, scope, or
-validity period. A verifier that checks only the presented credential has
-verified nothing: attenuation is only a narrowing if somebody walks the chain.
+validity period, or if any link's `issuer` is not the `credentialSubject.id`
+of its parent. The second check is what gives the first its meaning: without
+it, a chain could cite a VAC its issuer never held, and "narrowing" would be
+satisfiable by anyone who knows a governing party's VAC `id`. A verifier that
+checks only the presented credential has verified nothing: attenuation is only
+a narrowing if somebody walks the chain.
 
 **The holder presents the chain; the verifier does not fetch it.** A
 presentation carrying an attenuated VAC MUST include every VAC from the
@@ -1246,6 +1257,8 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
   - "Two distinct VRCs exist"
   - "Holder has a valid, unrevoked delegation to act in the name of a member of a recognized VTC, covering act X"
   - "This delegation chain is valid: each scope nests in its parent's, depth is bounded, expiry is monotone, and the root is issued by a member of a recognized VTC" — without disclosing the chain
+  - "Holder holds a VAC conferring action X at scope S, and its chain is valid: each link is issued by its parent's subject, narrows its parent, and the root is issued by the party governing S" — without disclosing the chain
+  - "Two credentials presented together share a subject" — required by [Authority and membership are separate credentials](#authority-and-membership-are-separate-credentials) whenever membership and authority are both proven with the subject withheld
 - Detailed ZK protocols and registry-ZK interactions are left to future work
 
 ## Security Considerations
@@ -1266,7 +1279,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 12. **Delegation revocation latency (VDC).** An appointment already made is withdrawn either by letting it expire or by revoking it, and the usefulness of revocation is bounded by how recently the verifier checked: a verifier holding a cached status accepts an act performed after revocation, and a verifier that fails hard on an unreachable status endpoint turns the issuer's outage into its own. Delegators should keep `validUntil` as short as the delegated purpose allows, so that expiry gives a bounded and stated exposure window; where a VDC carries `credentialStatus`, verifiers should check it within the freshness window defined by the governing VTC or VTN.
 13. **Bearer use of a VDC.** A VDC that is presented without a demonstration of key control by the delegate proves only that a delegation exists. Verifiers must enforce [Invocation Binding](#invocation-binding); otherwise a captured VDC is usable by whoever holds a copy of it.
 14. **Personhood laundering via delegation.** A [[ref: PHC]] asserts that its holder is a real person with exactly one membership. Because a delegate's acts are attributable to the delegator, a verifier that cannot distinguish the two may credit an agent with its principal's personhood, and may credit several agents of one person as several people. Verifiers must treat an act performed under a VDC as an act by the delegate in the delegator's name — never as an act by the delegator in person — and communities whose governance depends on personhood should state whether delegated acts are recognized at all.
-15. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
+15. **Authority chain verification.** A [[ref: VAC]] carrying `authority.parent` confers nothing on its own. Verifiers must verify every link to a VAC issued by the party governing the scope, and reject the chain if any link widens the actions, scope, or validity period its parent conferred, or is issued by a party other than its parent's subject. Verifying only the presented credential accepts a self-issued grant of arbitrary authority.
 16. **Chain resolution is bearer-side by design.** Verifiers must not dereference `authority.parent` to fetch a link they were not presented. Doing so makes verification depend on network availability, exposes the verifier to server-side request forgery against an address the holder chooses, and signals credential use to whoever hosts the identifier.
 17. **Chain depth is a denial-of-service surface.** Verification is linear in depth and runs on every presentation, so the maximum-depth rule is a resource bound, not a stylistic one.
 18. **Credential pooling under zero-knowledge presentation.** Where membership and authority are proven together with the subject identifier withheld, a verifier must require proof that both credentials share a subject. Otherwise two parties can combine one's membership with the other's authority and present as a single party holding both.
