@@ -1007,8 +1007,19 @@ named scope governed by the issuer.
       directly by the governing party.
     - `audience` (string, OPTIONAL): a DID that MUST be the presenter for this
       VAC to be accepted. Absent means any holder may present it.
-- `validUntil` (string, RECOMMENDED): authority that does not expire is
-  authority nobody can withdraw by waiting.
+- `validUntil` (string, REQUIRED): ISO 8601 datetime (`expirationDate` in
+  v1.1). Unlike the base structure, `validUntil` is REQUIRED for a VAC, as it
+  is for a [[ref: VDC]] and for a reason the VAC feels more sharply: nothing
+  about the subject's current standing is consulted when a VAC is verified, so
+  authority that does not expire is authority nobody can withdraw by waiting.
+
+> **Editor's note — withdrawal.** Expiry is at present the only way authority
+> conferred by a VAC is taken back, which is why `validUntil` is required
+> rather than recommended. Revocation — a CONDITIONAL `credentialStatus`, what
+> a verifier checks for it across a chain, and the effect of revoking a VAC on
+> those attenuated from it — is specified in
+> [#39](https://github.com/trustoverip/dtgwg-cred-spec/pull/39), which is cut
+> from this branch and rebases onto `main` once this merges.
 
 **Example (a member granted write access to a shared resource):**
 
