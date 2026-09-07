@@ -1503,7 +1503,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 > and it falls hardest where a chain is involved, because the disclosure
 > boundary is the whole chain rather than the credential presented (see
 > [Privacy Considerations](#privacy-considerations) item 13). Implementations
-> SHOULD NOT defer shipping a rule of this specification on the grounds that
+> should not defer shipping a rule of this specification on the grounds that
 > its zero-knowledge form is unspecified.
 
 ## Security Considerations
