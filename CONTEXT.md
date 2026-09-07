@@ -7,7 +7,7 @@ The specification defining the W3C Verifiable Credential types that create and a
 ### Graph structure
 
 **DTG (Decentralized Trust Graph)**:
-The graph whose nodes are entities (persons, devices, AI agents, VTCs) and whose edges are trust relationships (membership or peer-to-peer), established entirely through verifiable credentials.
+The graph whose nodes are entities (persons, devices, AI agents, services, VTCs, VTNs) and whose edges are trust relationships (membership or peer-to-peer), established entirely through verifiable credentials.
 
 **Edge Credential**:
 A credential that establishes a relationship between existing entities (nodes) in the DTG — membership (VMC) or peer-to-peer (VRC). Descriptive category only; never appears in schemas.
@@ -26,12 +26,16 @@ Attests that one entity (delegator) has appointed another (delegate) to act **in
 _Avoid_: authority, permission, capability, token, ZCAP (for what a VDC confers — see below)
 
 **Delegation vs authority**:
-Deliberately distinct, and the reason the VDC is its own type. **Authority** = may this party do this thing, *as itself*; the act is attributed to the party. **Delegation** = may this party act *in another's name*; the act is attributed to that other. Neither implies the other (access to a mailbox ≠ appointment to send mail as its owner), and a VDC never supplies missing authority. This spec defines delegation only; "authority" is reserved vocabulary for a possible future verifiable authority credential, so do not use it to describe what a VDC does.
+Deliberately distinct, and the reason the VDC is its own type. **Authority** = may this party do this thing, *as itself*; the act is attributed to the party. **Delegation** = may this party act *in another's name*; the act is attributed to that other. Neither implies the other (access to a mailbox ≠ appointment to send mail as its owner), and a VDC never supplies missing authority. The VAC is the credential for authority; a VDC never confers any, so do not use "authority" to describe what a VDC does.
 _Avoid_: using "authority" for anything a VDC confers
 
 **Delegation composes with authority; it does not carry it**:
-A VDC moves the question, it does not answer it. The verifier substitutes the delegator for the delegate and asks whether *the delegator* may do the act. Three independent checks: (1) may this party act in that name — the VDC; (2) may the delegator do this — out of scope here; (3) must the delegate independently qualify — governance. Reach = intersection of (1) and (2), never the union. Nothing the delegator holds is copied to the delegate, so a delegator cannot re-issue what it was itself issued; withdrawing the delegator's own permission stops the delegate immediately without revoking the VDC.
+A VDC moves the question, it does not answer it. The verifier substitutes the delegator for the delegate and asks whether *the delegator* may do the act. Three independent checks: (1) may this party act in that name — the VDC; (2) may the delegator do this — a VAC, or whatever else the act requires; (3) must the delegate independently qualify — governance. Reach = intersection of (1) and (2), never the union. Nothing the delegator holds is copied to the delegate, so a delegator cannot re-issue what it was itself issued; withdrawing the delegator's own permission stops the delegate immediately without revoking the VDC.
 _Avoid_: "delegating a credential", transfer, copy, hand over (for what a VDC does)
+
+**VAC (verifiable authority credential)**:
+Confers **authority**: states what its subject may *do*, as itself, within a named `scope` governed by the issuer, as an explicit list of `actions` (empty confers nothing; no action implies another). Stands outside the three informative categories. May be **attenuated** by its holder without the governing party: a child VAC's `issuer` MUST be its parent's `credentialSubject.id`, its `authority.parent` is a **digest** of the parent per Digest Encoding rather than an `id`, and it may only narrow actions, scope and validity. The holder presents the whole chain, which a digest `parent` makes structural — there is nothing a verifier could fetch; depth is capped at 8. Authority is not membership: proving both in zero knowledge requires a shared-subject proof. An agent equipped to act as itself gets an attenuated VAC; an agent that is to act as its principal gets a VDC.
+_Avoid_: delegation, acting on behalf of, appointment (for what a VAC confers); endorsement or VEC (for permission)
 
 **VIC (verifiable invitation credential / DTG invitation credential)**:
 Authorizes onboarding of a prospective member into a VTC or VTN. One W3C type (`InvitationCredential`); the glossary's VTC/VTN invitation subtypes are prose distinctions expressed via issuer/subject rules, not separate type strings.
