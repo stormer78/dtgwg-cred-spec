@@ -393,7 +393,7 @@ Peer and key-based methods such as `did:peer` and `did:key` satisfy these proper
 
 Four credential types reference another credential by cryptographic digest rather than by identifier: the member-issued [[ref: VMC]]'s `digestMultibase` (the grant it acknowledges), the [[ref: VWC]]'s `digestMultibase` (the edge credential it witnesses), the [[ref: VDC]]'s `delegation.parent` and `delegation.accepts` (the delegation it derives from, or the grant it accepts), and the [[ref: VAC]]'s `authority.parent` (the VAC it was attenuated from). All five members MUST be encoded identically, as specified here. The property name `digestMultibase` is the one [VC Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/) defines for a value of this form; `parent` and `accepts` carry the same encoding under names that state their role.
 
-These references are digests rather than identifiers for two different reasons, and it is worth keeping them apart. Three of them — the acknowledgement's `digestMultibase`, the acceptance's `accepts`, and the witness's `digestMultibase` — are statements *about the exact content* of the credential they name: the member consents to that grant, the delegate to that appointment, the witness attests to that edge, and a verifier re-derives nothing from the referenced credential but takes it as what was consented to or witnessed. An identifier would not do here, because the referenced credential could be re-issued with different claims under the same identifier and carry the consent or attestation with it. The two chain references — a VDC's and a VAC's `parent` — do not need the digest for safety: a verifier re-checks every link against the parent it is presented, so a substituted parent could never widen a chain. They take the same form so that every cross-credential reference in this specification is produced and matched in one way, so that a reference never names anything a verifier could be induced to fetch, and so that no credential has to carry a top-level `id` merely in order to be referenced. The cost is that a re-issued parent does not carry its existing children with it; each must be re-derived, which for a chain of narrowing authority or representation is the intended behaviour.
+These references are digests rather than identifiers for two different reasons, and it is worth keeping them apart. Three of them — the acknowledgement's `digestMultibase`, the acceptance's `accepts`, and the witness's `digestMultibase` — are statements *about the exact content* of the credential they name: the member consents to that grant, the delegate to that appointment, the witness attests to that edge, and a verifier re-derives nothing from the referenced credential but takes it as what was consented to or witnessed. An identifier would not do here, because the referenced credential could be re-issued with different claims under the same identifier and carry the consent or attestation with it. The two chain references — a VDC's and a VAC's `parent` — do not need the digest for safety: a verifier re-checks every link against the parent it is presented, so a substituted parent could never widen a chain. They take the same form so that every cross-credential reference in this specification is produced and matched in one way, so that a reference never names anything a verifier could be induced to fetch, and so that no credential has to carry a top-level `id` merely in order to be referenced. That said, the digest is doing more than uniformity here: it is what binds a child to the exact parent it was derived from, so that a child cannot be re-parented onto a later issue of that parent. This is what makes the cascade of [Withdrawal](#withdrawal) hold without a register — an issuer that revoked a VAC and re-issued it under the same `id` would, under an identifier reference, silently revive every attenuation beneath it. The cost of the same property is that a re-issued parent does not carry its existing children with it; each must be re-derived, which for a chain of narrowing authority or representation is the intended behaviour.
 
 A digest value MUST be produced as follows:
 
@@ -1130,13 +1130,16 @@ that as a signal the authority is being re-delegated further than intended.
     "authority": {
       "scope": "did:webvh:z6Mkw...:example.com:rooms:7f3a",
       "actions": ["read"],
-      "parent": "zQmYb3w7dN9KpRt...",
+      "parent": "zQmSfwf25HTvhmHve5VVWjwmQ9z7LFDWsB9hTweoieva2cd",
       "audience": "did:key:z6MkfR2aQ9Xv..."
     }
   },
   "proof": { "//": "..." }
 }
 ```
+
+The `parent` value above is the digest of the preceding example, computed as
+specified in [Digest Encoding](#digest-encoding).
 
 ### Withdrawal
 
@@ -1371,7 +1374,7 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 ### Every credential
 
 1. **Proof verification.** Verifiers must cryptographically verify the `proof` of every DTG credential, including resolution of the issuer's DID and validation of the verification method, before relying on any claim in the credential.
-2. **Validity period enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents) and should check applicable revocation status via the governing trust registry.
+2. **Validity period and revocation enforcement.** Verifiers must reject credentials outside their `validFrom`/`validUntil` window (or v1.1 equivalents). Where a credential carries `credentialStatus`, verifiers must check it within the freshness window the governing party defines, and should consult the governing trust registry or governance framework for that window and for whether status is required at all: the registry is where the policy lives, and the credential is where the status lives. See [Withdrawal](#withdrawal) for VACs and the `credentialStatus` rule of [VDC (Verifiable Delegation Credential)](#vdc-verifiable-delegation-credential) for VDCs.
 3. **Issuer authorization.** A cryptographically valid credential is not necessarily an authorized one. Verifiers must evaluate whether the issuer is authorized for the claimed role (e.g., a community-issued VMC's issuer being a recognized VTC, a member-issued VMC's issuer being the subject of the grant it acknowledges, a VIC issuer being permitted to invite) using the applicable trust registry or governance framework.
 4. **Key compromise.** Compromise of the private key controlling any DID used in a DTG credential (issuer or subject) undermines all credentials anchored to it. Key rotation and revocation procedures are governed by the applicable DID methods and trust registries.
 5. **Context collapse.** A credential presented outside the trust task exchange in which it was issued may be misinterpreted as evidence of a completed ceremony. The requirements of [Trust Task Context Binding](#trust-task-context-binding) exist to prevent this class of attack and must be enforced by verifiers.
