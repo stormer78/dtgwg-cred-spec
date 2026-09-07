@@ -482,8 +482,8 @@ The holder of a VRC MAY construct a zero-knowledge proof that demonstrates posse
 >
 > A **person is not a collective**, and a VMC MUST NOT be read as attesting
 > membership *in* one. That relationship already has two credentials that fit
-> it: a [[ref: VRC]] where the parties are peers, and a delegation credential
-> where one acts in the other's name. Reading membership onto a person would
+> it: a [[ref: VRC]] where the parties are peers, and a [[ref: VDC]] where one
+> acts in the other's name. Reading membership onto a person would
 > re-collapse a distinction the catalog spends effort keeping — the same
 > collapse the [Authority](#vac-verifiable-authority-credential) section
 > describes between asserting something about a party and conferring something
@@ -963,10 +963,13 @@ infer permission from adjectives.
 > new "Authority Credentials" category, following the reasoning in
 > [issue #28](https://github.com/trustoverip/dtgwg-cred-spec/issues/28): a
 > category with a single member is the structural problem that issue exists to
-> remove, and adding a fourth one would repeat it. If #28 lands as proposed, the
-> VAC and the VIC sit as peer sections after the two real categories. If the WG
-> would rather keep categories, this section is one heading away from becoming
-> one.
+> remove, and adding a fourth one would repeat it. The categories are
+> informative, so the VAC standing outside them decides nothing about its
+> schema. Whether the VIC is likewise promoted to a top-level section, so that
+> no section has exactly one subsection, is the remaining question under #28
+> and decision D-B of
+> [issue #31](https://github.com/trustoverip/dtgwg-cred-spec/issues/31); it is
+> an outline change and is left to a follow-up.
 
 **Purpose:** Confers authority on a party to perform specified actions within a
 named scope governed by the issuer.
@@ -975,9 +978,11 @@ named scope governed by the issuer.
 
 - `type` (array, REQUIRED): MUST include `"AuthorityCredential"`
 - `issuer` (string, REQUIRED): DID of the party that governs the scope — a
-  [[ref: C-DID]], the DID of a [[ref: DTG node]] such as a shared resource, or
-  the [[ref: M-DID]] of a holder attenuating authority they themselves hold
-  (see *Attenuation* below)
+  [[ref: VTC]] or [[ref: VTN]], another [[ref: DTG node]] such as a shared
+  resource or service, or a holder attenuating authority they themselves hold
+  (see *Attenuation* below). As for every DTG credential, the issuer's
+  [[ref: correlation scope]] is declared rather than encoded in the
+  identifier; see [Correlation Scope](#correlation-scope)
 - `credentialSubject` (object, REQUIRED):
   - `id` (string, REQUIRED): DID of the party receiving the authority
   - `authority` (object, REQUIRED):
@@ -1119,28 +1124,6 @@ credential means a verifier cannot tell which it has been shown.
 > to be interpreted across governance boundaries — a shared core vocabulary
 > with room for extension is the obvious answer, and is deliberately not
 > attempted here.
-
-> **Editor's note — identifying service nodes, and why
-> [issue #22](https://github.com/trustoverip/dtgwg-cred-spec/issues/22) already
-> fixes it.** Adding services to the node types surfaces a gap: the four VID
-> types ([[ref: R-DIDs]], [[ref: M-DIDs]], [[ref: C-DIDs]], [[ref: P-DIDs]])
-> describe a member, a community, a persona, or a peer, and a mediator or trust
-> registry is none of those — though it holds an identifier and forms edges like
-> any other node.
->
-> That is the same defect #22 identifies rather than a new one: each VID name
-> encodes both *what the identifier is attached to* and *how widely it may be
-> correlated*, and the role half is already carried by the credential the
-> identifier appears in. A service node has nowhere to go precisely because the
-> taxonomy enumerates roles. Under #22's correlation-scope axis it needs no new
-> type at all — a mediator's identifier is simply `public`, and #22's principle
-> that **roles are conferred by credentials, scope is declared by the holder**
-> is exactly what a VAC does for a service: the credential says what it may do,
-> the identifier says only how far it may be correlated.
->
-> A VAC is unaffected either way, since `scope` is a DID or URI rather than a
-> typed VID. Recorded here as a further data point for #22, not as a competing
-> proposal.
 
 > **Editor's note — this is the credential the VDC left room for.**
 > [PR #19](https://github.com/trustoverip/dtgwg-cred-spec/pull/19) proposes a
