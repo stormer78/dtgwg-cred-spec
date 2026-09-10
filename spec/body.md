@@ -1496,6 +1496,20 @@ A grant is a PHC whether or not the member has acknowledged it. The member may p
 > is tracked in
 > [#38](https://github.com/trustoverip/dtgwg-cred-spec/issues/38).
 >
+> The ZKP task force's work on these is visible in its
+> [working draft](https://github.com/trustoverip/dtgwg-zkp-spec/pull/8) and
+> the accompanying
+> [construction catalogue](https://github.com/trustoverip/dtgwg-zkp-spec/discussions/9),
+> where records 007 (common control), 010 (community-anchored composition),
+> 020 (delegation chains) and 008 (blinded binders) bear on the dependencies
+> above. That draft is proposed rather than merged, and a record in the
+> catalogue is a statement, its witness requirements, and the open questions
+> around it, not a completed proof; nothing there closes #9 or #38, and the
+> shared-subject and VAC-chain cases in particular still need their own mapping
+> and evidence rather than inheriting one because common control appears in the
+> catalogue. Glossary cross-references will follow once that specification is
+> merged and its terms are published.
+>
 > **What holds until this work lands.** Nothing in this specification is
 > unverifiable in the meantime: every requirement here can be checked by
 > presenting the credentials themselves, which is what a holder must do today
